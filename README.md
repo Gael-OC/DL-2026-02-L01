@@ -31,6 +31,8 @@ y la busqueda de hiperparametros en el loop interno.
 - Metricas ordinales: `mae_ordinal`, `quadratic_weighted_kappa`,
   `accuracy_pm1`, `errores_graves`
 - Reporte por clase y matriz de confusion del ultimo fold externo
+- `--all-targets`: los seis experimentos, tablas, rankings (F1 y MAE) y graficos
+- Ranking configurable con `--rank-metric` y `--rank-mode`
 - Ejemplo de grid en `HYPERPARAMETER_GRID` (todavia no se recorre)
 
 ## Que queda como TODO
@@ -58,8 +60,11 @@ DL-2026-02-L01/
 |   |-- losses.py
 |   |-- models.py
 |   |-- ordinal.py
-|   `-- preprocessing.py
+|   |-- preprocessing.py
+|   `-- reporting.py
 |-- main.py
+|-- results/
+|   `-- README.md
 |-- presentation/
 |-- .gitignore
 |-- environment.yml
@@ -75,9 +80,17 @@ DL-2026-02-L01/
 ```bash
 conda activate lab_pytorch
 python main.py --data-path dataset/archivo.csv --target-name GDS_R2
+python main.py --data-path dataset/archivo.sav --all-targets --epochs 5
 ```
 
-Ese comando:
+`--all-targets`:
+
+- entrena Softmax en `GDS` y `GDS_R1` ... `GDS_R5`,
+- usa 2 folds en `GDS` para no romper la estratificacion,
+- escribe CSV, Markdown y PNG en `results/`,
+- e imprime rankings por F1 (maximizar) y MAE (minimizar).
+
+Un experimento suelto (`--target-name`):
 
 - carga el dataset,
 - prepara `X` e `y`,
@@ -107,13 +120,18 @@ No seleccionar por accuracy.
 
 El objetivo `GDS` tiene 7 clases y la clase menos frecuente tiene solo 2
 muestras. Con el valor por defecto de `5` folds externos, la validacion
-estratificada falla. Para ese experimento hay que reducir `--outer-folds` y
-`--inner-folds`, o trabajar primero con `GDS_R2`.
+estratificada falla. Para un experimento suelto hay que reducir
+`--outer-folds` y `--inner-folds`, o trabajar primero con `GDS_R2`.
+
+Con `--all-targets`, `GDS` usa `--gds-outer-folds` y `--gds-inner-folds`
+(por defecto `2`). El resto de columnas usa `--outer-folds` / `--inner-folds`.
+Si un fold interno no puede estratificar, se omite ese loop interno y se avisa.
 
 ## Argumentos utiles
 
 - `--data-path`: ruta al archivo `csv` o `sav`.
-- `--target-name`: experimento a ejecutar. Por defecto `GDS_R2`.
+- `--target-name`: un experimento. Por defecto `GDS_R2`. Se ignora con `--all-targets`.
+- `--all-targets`: corre los seis objetivos y genera reportes.
 - `--hidden-dim`: neuronas de la capa oculta.
 - `--dropout`: dropout de la red.
 - `--learning-rate`: learning rate de Adam.
@@ -122,20 +140,39 @@ estratificada falla. Para ese experimento hay que reducir `--outer-folds` y
 - `--epochs`: epocas por fold.
 - `--outer-folds`: folds externos. Por defecto `5`.
 - `--inner-folds`: folds internos. Por defecto `3`.
+- `--gds-outer-folds` / `--gds-inner-folds`: folds de `GDS` con `--all-targets` (por defecto `2`).
 - `--device`: `cpu`, `cuda` o `auto`.
+- `--output-dir`: carpeta de CSV, Markdown y PNG. Por defecto `results/`.
+- `--rank-metric`: metrica del ranking generico (`f1_macro`, `mae_ordinal`, ...).
+- `--rank-mode`: `max`, `min` o `auto` (MAE y errores graves se minimizan).
 
-Para una primera prueba rapida conviene bajar las epocas:
+Cambiar `--hidden-dim` a mano no es busqueda de hiperparametros. Recorrer
+`HYPERPARAMETER_GRID` en el loop interno sigue como TODO.
+
+`--coral`, `--use-weights` y `--beta` no existen todavia. CORAL es trabajo
+del alumno. Las tablas ya tienen columna `algorithm` para agregar filas.
+
+Para una primera prueba rapida:
 
 ```bash
 python main.py --data-path dataset/archivo.csv --target-name GDS_R2 --epochs 5
+python main.py --data-path dataset/archivo.sav --all-targets --epochs 5 --output-dir results
+python main.py --data-path dataset/archivo.sav --all-targets --rank-metric mae_ordinal --rank-mode min
 ```
 
 ## Plan sugerido para alumnos
 
 1. Comprender el problema y revisar las columnas del dataset.
 2. Ejecutar el Softmax entregado en `GDS_R2` y leer las metricas.
-3. Activar la busqueda de hiperparametros en el loop interno (`HYPERPARAMETER_GRID`).
-4. Implementar `CoralLayer`, `MLPCoral` y `coral_loss`.
-5. Incorporar pesos por numero efectivo de muestras.
-6. Comparar Softmax (default y mejor HP) contra CORAL en los seis objetivos.
-7. Completar la tabla de la presentacion con media +/- std de los folds externos.
+3. Correr `--all-targets` y revisar rankings F1 y MAE en `results/`.
+4. Activar la busqueda de hiperparametros en el loop interno (`HYPERPARAMETER_GRID`).
+5. Implementar `CoralLayer`, `MLPCoral` y `coral_loss`.
+6. Incorporar pesos por numero efectivo de muestras.
+7. Agregar filas CORAL a las mismas tablas (`algorithm`) y completar el informe.
+
+## Presentaciones
+
+En `presentation/` (compilar dos veces con `pdflatex`):
+
+- `Laboratorio_01_redes_poco_profundas_ordinal.tex`: Enunciado (27/08, entrega 24/09).
+- `Laboratorio_01.2_redes_poco_profundas.tex`: Sesion dirigida del 03/09.
