@@ -2,6 +2,7 @@
 
 import numpy as np
 import torch
+import torch.nn.functional as nnFunctional
 
 
 def labels_to_levels(labels: torch.Tensor, num_classes: int) -> torch.Tensor:
@@ -16,15 +17,15 @@ def labels_to_levels(labels: torch.Tensor, num_classes: int) -> torch.Tensor:
     - labels: (batch_size,)
     - salida: (batch_size, num_classes - 1)
     """
-
-    raise NotImplementedError("TODO: implementar labels_to_levels().")
+    levels = [label > num_classes-1 for label in labels]
+    return np.array(levels)
 
 
 def coral_loss(
-    logits: torch.Tensor,
-    labels: torch.Tensor,
-    num_classes: int,
-    class_weights: torch.Tensor | None = None,
+    logits: torch.Tensor, # y predicho
+    labels: torch.Tensor, # y
+    num_classes: int, # K
+    class_weights: torch.Tensor | None = None, # W_k o w_c
 ) -> torch.Tensor:
     """
     TODO(alumno):
@@ -35,13 +36,27 @@ def coral_loss(
     - labels: (batch_size,)
     - class_weights: (num_classes,) o None
     """
+    levels = labels_to_levels(labels, num_classes) #Y_nk
 
-    raise NotImplementedError("TODO: implementar coral_loss().")
+    if not logits.shape == levels.shape:
+        raise ValueError("Los logits (%s) no tienen la misma forma que los niveles (%s). "
+                         % (logits.shape, levels.shape))
+    
+    logits_sigmoid = nnFunctional.logsigmoid(logits)
+
+    loss = (logits_sigmoid*levels + (logits_sigmoid - logits)*(1-levels))
+
+    if class_weights is not None:
+        loss *= class_weights
+    
+    loss = torch.mean((-torch.sum(loss, dim=1)))
+    
+    return loss
 
 
 def effective_number_weights(
-    labels: np.ndarray,
-    num_classes: int,
+    labels: np.ndarray, #y
+    num_classes: int, #k
     beta: float = 0.99,
 ) -> torch.Tensor:
     """
@@ -57,4 +72,8 @@ def effective_number_weights(
     - salida: (num_classes,)
     """
 
-    raise NotImplementedError("TODO: implementar effective_number_weights().")
+    _, N = np.unique(labels, return_counts=True) #cantidades de cada clase
+
+    w_c = [(1 - beta) / (1 - beta ** n_c) for n_c  in N]
+
+    return np.array(w_c)
