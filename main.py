@@ -155,6 +155,7 @@ def evaluate_model(
     model: nn.Module,
     loader: DataLoader,
     device: torch.device,
+    num_classes: int,
 ) -> tuple[dict[str, float], np.ndarray, np.ndarray]:
     """Evalua el modelo y devuelve metricas, etiquetas y predicciones."""
 
@@ -173,7 +174,7 @@ def evaluate_model(
 
     y_pred = np.concatenate(all_predictions)
     y_true = np.concatenate(all_targets)
-    return compute_all_metrics(y_true, y_pred), y_true, y_pred
+    return compute_all_metrics(y_true, y_pred, num_classes=num_classes), y_true, y_pred
 
 
 def run_training_cycle(
@@ -221,7 +222,12 @@ def run_training_cycle(
         epoch_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
         history.append(epoch_loss)
 
-    metrics, y_true, y_pred = evaluate_model(model, eval_loader, device=device)
+    metrics, y_true, y_pred = evaluate_model(
+        model,
+        eval_loader,
+        device=device,
+        num_classes=num_classes,
+    )
 
     return {
         "model": model,
@@ -405,7 +411,9 @@ def train_one_experiment(
             class_names=artifacts["classes"],
         ),
         "last_fold_confusion": compute_confusion_matrix(
-            last_fold["y_true"], last_fold["y_pred"]
+            last_fold["y_true"],
+            last_fold["y_pred"],
+            num_classes=num_classes,
         ),
         "algorithm": DEFAULT_ALGORITHM,
     }
