@@ -168,7 +168,7 @@ archivo generado o pull request integrado.
 #### Gael
 
 - [x] Verificar columnas, tipos, valores finitos y recodificaciones.
-- [ ] Verificar conteos de clase de los seis objetivos.
+- [x] Verificar conteos de clase de los seis objetivos.
 - [ ] Persistir o reconstruir determinísticamente los folds compartidos.
 - [ ] Probar disjunción entre outer-train y outer-test.
 - [ ] Probar que outer-test no aparece en los folds internos.
