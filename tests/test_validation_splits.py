@@ -24,6 +24,15 @@ class ValidationSplitTests(unittest.TestCase):
             np.testing.assert_array_equal(first[0], repeated[0])
             np.testing.assert_array_equal(first[1], repeated[1])
 
+    def test_outer_train_and_test_are_disjoint(self) -> None:
+        y = np.repeat([0, 1, 2], 10)
+
+        outer_splits = split_for_validation(y, n_splits=5, random_state=42)
+
+        for outer_train_idx, outer_test_idx in outer_splits:
+            overlap = np.intersect1d(outer_train_idx, outer_test_idx)
+            self.assertEqual(len(overlap), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
