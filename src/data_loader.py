@@ -59,7 +59,11 @@ def build_input_matrix(
 
     columns = feature_columns or FEATURE_COLUMNS
     validate_feature_columns(dataframe, columns)
-    return dataframe[columns].astype("float32").to_numpy()
+    inputs = dataframe[columns].astype("float32").to_numpy()
+    if not np.isfinite(inputs).all():
+        raise ValueError("Las columnas de entrada contienen NaN o valores infinitos.")
+
+    return inputs
 
 
 class CognitiveDataset(Dataset):

@@ -6,7 +6,7 @@
 > resultados definitivos.
 
 **Equipo:** Gael y Johan  
-**Entrega indicada en el material:** 24/09/2026 (confirmar hora)  
+**Entrega:** 24/09/2026 a las 23:59
 
 La distribución de tareas permite avanzar en paralelo, reducir conflictos de
 código y reunir el trabajo en puntos de integración acordados.
@@ -154,12 +154,12 @@ archivo generado o pull request integrado.
 
 ### H0 — protocolo y entorno
 
-- [ ] Confirmar fecha y hora exactas de entrega.
-- [ ] Confirmar entorno de Python/PyTorch y dispositivo de ejecución.
+- [x] Confirmar fecha y hora exactas de entrega.
+- [x] Confirmar entorno de Python/PyTorch y dispositivo de ejecución.
 - [ ] Ambos pueden ejecutar un smoke test de Softmax en `GDS_R2`.
-- [ ] Congelar contrato de métodos y formato mínimo de resultados.
-- [ ] Enviar al docente la consulta sobre validación interna de `GDS`.
-- [ ] Registrar versiones, seed inicial y comando de smoke test.
+- [x] Congelar contrato de métodos y formato mínimo de resultados.
+- [x] Acordar la validación interna especial de `GDS` agrupando las clases 6 y 7 solo para estratificar.
+- [x] Registrar versiones, seed inicial y comando de smoke test.
 
 **Cierre:** ambos pueden iniciar sus módulos sin esperar código del otro.
 
@@ -167,12 +167,12 @@ archivo generado o pull request integrado.
 
 #### Gael
 
-- [ ] Verificar columnas, tipos, valores finitos y recodificaciones.
-- [ ] Verificar conteos de clase de los seis objetivos.
-- [ ] Persistir o reconstruir determinísticamente los folds compartidos.
-- [ ] Probar disjunción entre outer-train y outer-test.
-- [ ] Probar que outer-test no aparece en los folds internos.
-- [ ] Corregir métricas y confusiones para usar la escala completa.
+- [x] Verificar columnas, tipos, valores finitos y recodificaciones.
+- [x] Verificar conteos de clase de los seis objetivos.
+- [x] Persistir o reconstruir determinísticamente los folds compartidos.
+- [x] Probar disjunción entre outer-train y outer-test.
+- [x] Probar que outer-test no aparece en los folds internos.
+- [x] Corregir métricas y confusiones para usar la escala completa.
 
 #### Johan
 
@@ -331,7 +331,7 @@ Añadir una fila solamente para decisiones que cambien el procedimiento.
 | Fecha | Decisión | Motivo | Participantes | Evidencia |
 |---|---|---|---|---|
 | 16/09/2026 | CORN será la extensión principal | Permite una comparación ordinal coherente | Ambos; implementación de Gael | Plan de ejecución |
-| Pendiente | Protocolo especial de `GDS` | Solo existen dos observaciones en la clase extrema | Ambos/docente | Respuesta del docente |
+| 16/09/2026 | Agrupar clases 6 y 7 solo para estratificar la validación interna de `GDS` | Solo existen dos observaciones en la clase extrema | Gael | Protocolo acordado |
 
 ## 9. Estado diario
 
@@ -340,7 +340,7 @@ artefacto correspondiente.
 
 | Fecha | Persona | Terminado | Siguiente | Bloqueo |
 |---|---|---|---|---|
-| 16/09/2026 | Gael | Plan inicial | Contrato y validación | Confirmar protocolo GDS |
+| 16/09/2026 | Gael | H0 local | Validación y folds | — |
 | 16/09/2026 | Johan | — | CORAL y pruebas sintéticas | — |
 
 ## 10. Retiro de este documento

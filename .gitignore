@@ -19,3 +19,5 @@ docente/
 # Presentación del proyecto
 presentation/
 
+.DS_Store
+PLAN_LABORATORIO.md

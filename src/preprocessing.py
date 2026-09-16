@@ -26,6 +26,12 @@ def encode_target_as_indices(
     if target_name not in dataframe.columns:
         raise ValueError(f"La columna objetivo {target_name} no existe en el dataset.")
 
+    target_values = dataframe[target_name].to_numpy(dtype=np.float64)
+    if not np.isfinite(target_values).all() or not np.equal(
+        target_values, np.floor(target_values)
+    ).all():
+        raise ValueError(f"El target {target_name} debe contener valores enteros finitos.")
+
     y_raw = dataframe[target_name].astype(int)
     classes = sorted(y_raw.unique().tolist())
     class_to_idx = {class_value: idx for idx, class_value in enumerate(classes)}
