@@ -33,6 +33,24 @@ class ValidationSplitTests(unittest.TestCase):
             overlap = np.intersect1d(outer_train_idx, outer_test_idx)
             self.assertEqual(len(overlap), 0)
 
+    def test_outer_test_is_absent_from_inner_folds(self) -> None:
+        y = np.repeat([0, 1, 2], 10)
+
+        outer_splits = split_for_validation(y, n_splits=5, random_state=42)
+
+        for outer_fold, (outer_train_idx, outer_test_idx) in enumerate(
+            outer_splits, start=1
+        ):
+            inner_splits = split_for_validation(
+                y[outer_train_idx], n_splits=3, random_state=42 + outer_fold
+            )
+            for inner_train_idx, inner_val_idx in inner_splits:
+                inner_global_idx = outer_train_idx[
+                    np.concatenate([inner_train_idx, inner_val_idx])
+                ]
+                overlap = np.intersect1d(inner_global_idx, outer_test_idx)
+                self.assertEqual(len(overlap), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -170,7 +170,7 @@ archivo generado o pull request integrado.
 - [x] Verificar columnas, tipos, valores finitos y recodificaciones.
 - [x] Verificar conteos de clase de los seis objetivos.
 - [x] Persistir o reconstruir determinísticamente los folds compartidos.
-- [ ] Probar disjunción entre outer-train y outer-test.
+- [x] Probar disjunción entre outer-train y outer-test.
 - [ ] Probar que outer-test no aparece en los folds internos.
 - [ ] Corregir métricas y confusiones para usar la escala completa.
 
