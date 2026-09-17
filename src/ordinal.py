@@ -1,7 +1,8 @@
 """Utilidades ordinales que los alumnos deben implementar."""
 
 import torch
-
+import numpy as np
+import torch.nn.functional as nnFunctional
 
 @torch.no_grad()
 def logits_to_ordinal_predictions(
@@ -20,5 +21,12 @@ def logits_to_ordinal_predictions(
     - logits: (batch_size, K-1)
     - salida: (batch_size,)
     """
+    logits_sigmoid = nnFunctional.sigmoid(logits)
+    print(logits_sigmoid)
 
-    raise NotImplementedError("TODO: implementar logits_to_ordinal_predictions().")
+    y_hat = [
+        sum(logit > threshold for logit in fila)+1 #suma 1 si se cumple
+        for fila in logits_sigmoid
+        ]
+
+    return torch.tensor(y_hat)

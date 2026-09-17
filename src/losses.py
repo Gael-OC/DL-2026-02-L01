@@ -18,7 +18,6 @@ def labels_to_levels(labels: torch.Tensor, num_classes: int) -> torch.Tensor:
     - salida: (batch_size, num_classes - 1)
     """
     umbrales = np.arange(num_classes)[1:]
-    print(umbrales)
     levels = (np.array(labels)[:, np.newaxis] > umbrales).astype(int)
     return torch.tensor(levels)
 
