@@ -194,7 +194,7 @@ sintéticas sin depender todavía de `main.py`.
       para estratificar los folds internos, conservando las etiquetas
       originales para entrenamiento y evaluación.
 - [x] Recorrer las cuatro configuraciones de `HYPERPARAMETER_GRID`.
-- [ ] Promediar MAE y QWK sobre todos los folds internos.
+- [x] Promediar MAE y QWK sobre todos los folds internos.
 - [ ] Elegir menor MAE; en empate, mayor QWK.
 - [ ] Reentrenar desde cero sobre todo outer-train.
 - [ ] Guardar la mejor configuración de cada outer fold.

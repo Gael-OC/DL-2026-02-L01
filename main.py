@@ -349,6 +349,8 @@ def train_one_experiment(
                         "config": dict(candidate_config),
                         "mae_scores": candidate_mae_scores,
                         "qwk_scores": candidate_qwk_scores,
+                        "mae_mean": float(np.mean(candidate_mae_scores)),
+                        "qwk_mean": float(np.mean(candidate_qwk_scores)),
                     }
                 )
 
@@ -384,13 +386,17 @@ def train_one_experiment(
             {
                 "outer_fold": outer_fold_index,
                 "inner_mae_mean": (
-                    float(np.mean(inner_mae_scores)) if inner_mae_scores else float("nan")
+                    inner_grid_results[0]["mae_mean"]
+                    if inner_grid_results
+                    else float("nan")
                 ),
                 "inner_mae_std": (
                     float(np.std(inner_mae_scores)) if inner_mae_scores else float("nan")
                 ),
                 "inner_qwk_mean": (
-                    float(np.mean(inner_qwk_scores)) if inner_qwk_scores else float("nan")
+                    inner_grid_results[0]["qwk_mean"]
+                    if inner_grid_results
+                    else float("nan")
                 ),
                 "inner_qwk_std": (
                     float(np.std(inner_qwk_scores)) if inner_qwk_scores else float("nan")

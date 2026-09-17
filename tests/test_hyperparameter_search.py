@@ -13,8 +13,11 @@ from src.evaluation import compute_all_metrics
 def fake_training_cycle(**kwargs) -> dict:
     y_true = kwargs["y_eval"]
     y_pred = np.zeros_like(y_true)
+    metrics = compute_all_metrics(y_true, y_pred, num_classes=3)
+    metrics["mae_ordinal"] = float(kwargs["seed"] % 10)
+    metrics["qwk"] = float(kwargs["seed"] % 10) / 10
     return {
-        "metrics": compute_all_metrics(y_true, y_pred, num_classes=3),
+        "metrics": metrics,
         "y_true": y_true,
         "y_pred": y_pred,
         "final_train_loss": 0.0,
@@ -58,6 +61,8 @@ class HyperparameterSearchTests(unittest.TestCase):
             for candidate_result in grid_results:
                 self.assertEqual(len(candidate_result["mae_scores"]), 2)
                 self.assertEqual(len(candidate_result["qwk_scores"]), 2)
+                self.assertAlmostEqual(candidate_result["mae_mean"], 3.5)
+                self.assertAlmostEqual(candidate_result["qwk_mean"], 0.35)
 
 
 if __name__ == "__main__":
