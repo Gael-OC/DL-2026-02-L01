@@ -40,7 +40,11 @@ from evaluation import (  # noqa: E402
     format_classification_report,
 )
 from models import ShallowMultiClassNet  # noqa: E402
-from preprocessing import prepare_experiment_data, split_for_validation  # noqa: E402
+from preprocessing import (  # noqa: E402
+    labels_for_inner_stratification,
+    prepare_experiment_data,
+    split_for_validation,
+)
 from reporting import (  # noqa: E402
     experiment_to_row,
     format_ranking_console,
@@ -294,6 +298,11 @@ def train_one_experiment(
         y_outer_train = y[outer_train_idx]
         X_outer_test = X[outer_test_idx]
         y_outer_test = y[outer_test_idx]
+        inner_stratification_labels = labels_for_inner_stratification(
+            y_outer_train,
+            target_name=target_name,
+            class_to_idx=artifacts["class_to_idx"],
+        )
 
         inner_mae_scores = []
         inner_qwk_scores = []
@@ -302,9 +311,9 @@ def train_one_experiment(
         # internos. Quedarse con la de menor MAE; empate: mayor QWK.
         # No usar el fold externo de prueba para elegir hiperparametros.
         # No reportar el mejor fold interno como resultado final.
-        if can_make_stratified_splits(y_outer_train, inner_folds):
+        if can_make_stratified_splits(inner_stratification_labels, inner_folds):
             inner_splits = split_for_validation(
-                y_outer_train,
+                inner_stratification_labels,
                 n_splits=inner_folds,
                 random_state=seed + outer_fold_index,
             )

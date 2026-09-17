@@ -49,6 +49,19 @@ def prepare_experiment_data(
     return X, y, classes, class_to_idx
 
 
+def labels_for_inner_stratification(
+    y: np.ndarray,
+    target_name: str,
+    class_to_idx: dict[int, int],
+) -> np.ndarray:
+    """Agrupa las clases originales 6 y 7 solo al estratificar GDS."""
+
+    labels = np.asarray(y).ravel().copy()
+    if target_name == "GDS":
+        labels[labels == class_to_idx[7]] = class_to_idx[6]
+    return labels
+
+
 def split_for_validation(
     y: np.ndarray, n_splits: int, random_state: int = 42
 ) -> list[tuple[np.ndarray, np.ndarray]]:
