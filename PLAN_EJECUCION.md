@@ -193,7 +193,7 @@ sintéticas sin depender todavía de `main.py`.
 - [x] Aplicar en `GDS` la agrupación de las clases originales 6 y 7 solo
       para estratificar los folds internos, conservando las etiquetas
       originales para entrenamiento y evaluación.
-- [ ] Recorrer las cuatro configuraciones de `HYPERPARAMETER_GRID`.
+- [x] Recorrer las cuatro configuraciones de `HYPERPARAMETER_GRID`.
 - [ ] Promediar MAE y QWK sobre todos los folds internos.
 - [ ] Elegir menor MAE; en empate, mayor QWK.
 - [ ] Reentrenar desde cero sobre todo outer-train.

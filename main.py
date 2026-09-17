@@ -30,6 +30,7 @@ from config import (  # noqa: E402
     DEFAULT_RANK_MODE,
     DEFAULT_TARGET,
     DEFAULT_WEIGHT_DECAY,
+    HYPERPARAMETER_GRID,
     TARGET_COLUMNS,
 )
 from data_loader import CognitiveDataset, load_dataframe  # noqa: E402
@@ -306,9 +307,9 @@ def train_one_experiment(
 
         inner_mae_scores = []
         inner_qwk_scores = []
-        # TODO(alumno): recorrer HYPERPARAMETER_GRID aqui.
-        # Para cada configuracion, promediar MAE y QWK sobre estos folds
-        # internos. Quedarse con la de menor MAE; empate: mayor QWK.
+        inner_grid_results = []
+        # TODO(alumno): promediar MAE y QWK de cada configuracion sobre estos
+        # folds internos. Quedarse con la de menor MAE; empate: mayor QWK.
         # No usar el fold externo de prueba para elegir hiperparametros.
         # No reportar el mejor fold interno como resultado final.
         if can_make_stratified_splits(inner_stratification_labels, inner_folds):
@@ -317,26 +318,42 @@ def train_one_experiment(
                 n_splits=inner_folds,
                 random_state=seed + outer_fold_index,
             )
-            for inner_fold_index, (inner_train_idx, inner_val_idx) in enumerate(
-                inner_splits, start=1
-            ):
-                inner_result = run_training_cycle(
-                    X_train=X_outer_train[inner_train_idx],
-                    y_train=y_outer_train[inner_train_idx],
-                    X_eval=X_outer_train[inner_val_idx],
-                    y_eval=y_outer_train[inner_val_idx],
-                    num_classes=num_classes,
-                    hidden_dim=hidden_dim,
-                    dropout=dropout,
-                    learning_rate=learning_rate,
-                    weight_decay=weight_decay,
-                    batch_size=batch_size,
-                    epochs=epochs,
-                    seed=seed + outer_fold_index * 100 + inner_fold_index,
-                    device=device,
+            for candidate_config in HYPERPARAMETER_GRID:
+                candidate_mae_scores = []
+                candidate_qwk_scores = []
+                for inner_fold_index, (inner_train_idx, inner_val_idx) in enumerate(
+                    inner_splits, start=1
+                ):
+                    inner_result = run_training_cycle(
+                        X_train=X_outer_train[inner_train_idx],
+                        y_train=y_outer_train[inner_train_idx],
+                        X_eval=X_outer_train[inner_val_idx],
+                        y_eval=y_outer_train[inner_val_idx],
+                        num_classes=num_classes,
+                        hidden_dim=candidate_config["hidden_dim"],
+                        dropout=candidate_config["dropout"],
+                        learning_rate=candidate_config["learning_rate"],
+                        weight_decay=candidate_config["weight_decay"],
+                        batch_size=batch_size,
+                        epochs=epochs,
+                        seed=seed + outer_fold_index * 100 + inner_fold_index,
+                        device=device,
+                    )
+                    candidate_mae_scores.append(
+                        inner_result["metrics"]["mae_ordinal"]
+                    )
+                    candidate_qwk_scores.append(inner_result["metrics"]["qwk"])
+
+                inner_grid_results.append(
+                    {
+                        "config": dict(candidate_config),
+                        "mae_scores": candidate_mae_scores,
+                        "qwk_scores": candidate_qwk_scores,
+                    }
                 )
-                inner_mae_scores.append(inner_result["metrics"]["mae_ordinal"])
-                inner_qwk_scores.append(inner_result["metrics"]["qwk"])
+
+            inner_mae_scores = inner_grid_results[0]["mae_scores"]
+            inner_qwk_scores = inner_grid_results[0]["qwk_scores"]
         else:
             print(
                 f"Aviso: el fold externo {outer_fold_index} de {target_name} "
@@ -378,6 +395,7 @@ def train_one_experiment(
                 "inner_qwk_std": (
                     float(np.std(inner_qwk_scores)) if inner_qwk_scores else float("nan")
                 ),
+                "inner_grid_results": inner_grid_results,
                 "outer_metrics": final_result["metrics"],
                 "y_true": final_result["y_true"],
                 "y_pred": final_result["y_pred"],
