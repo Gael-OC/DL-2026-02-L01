@@ -176,11 +176,11 @@ archivo generado o pull request integrado.
 
 #### Johan
 
-- [ ] Implementar `labels_to_levels` para `K=2`, `K=3` y `K=7`.
+- [x] Implementar `labels_to_levels` para `K=2`, `K=3` y `K=7`.
 - [ ] Implementar `CoralLayer` con umbrales ordenados.
 - [ ] Implementar `MLPCoral`.
 - [ ] Implementar la pérdida CORAL sin aplicar sigmoid previamente.
-- [ ] Implementar `logits_to_ordinal_predictions`.
+- [x] Implementar `logits_to_ordinal_predictions`.
 - [ ] Añadir pruebas de formas, finitud y gradientes.
 
 **Cierre:** la base Softmax conserva folds correctos y CORAL supera pruebas
