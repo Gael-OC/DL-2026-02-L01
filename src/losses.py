@@ -17,8 +17,10 @@ def labels_to_levels(labels: torch.Tensor, num_classes: int) -> torch.Tensor:
     - labels: (batch_size,)
     - salida: (batch_size, num_classes - 1)
     """
-    levels = [label > num_classes-1 for label in labels]
-    return np.array(levels)
+    umbrales = np.arange(num_classes)[1:]
+    print(umbrales)
+    levels = (np.array(labels)[:, np.newaxis] > umbrales).astype(int)
+    return torch.tensor(levels)
 
 
 def coral_loss(
@@ -76,4 +78,4 @@ def effective_number_weights(
 
     w_c = [(1 - beta) / (1 - beta ** n_c) for n_c  in N]
 
-    return np.array(w_c)
+    return torch.tensor(w_c)
