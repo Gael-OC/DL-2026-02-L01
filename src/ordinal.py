@@ -22,7 +22,11 @@ def logits_to_ordinal_predictions(
     - salida: (batch_size,)
     """
     logits_sigmoid = nnFunctional.sigmoid(logits)
-    print(logits_sigmoid)
+    
+    """
+    #descomentar para debug
+    print("logits_sigmoid:",logits_sigmoid)
+    """
 
     y_hat = [
         sum(logit > threshold for logit in fila)+1 #suma 1 si se cumple

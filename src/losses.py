@@ -3,6 +3,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as nnFunctional
+from src.ordinal import logits_to_ordinal_predictions
 
 
 def labels_to_levels(labels: torch.Tensor, num_classes: int) -> torch.Tensor:
@@ -39,19 +40,20 @@ def coral_loss(
     """
     levels = labels_to_levels(labels, num_classes) #Y_nk
 
-    if not logits.shape == levels.shape:
-        raise ValueError("Los logits (%s) no tienen la misma forma que los niveles (%s). "
-                         % (logits.shape, levels.shape))
-    
-    logits_sigmoid = nnFunctional.logsigmoid(logits)
+    """
+    #descomentar para debug
+    print(logits.float())
+    print("")
+    print(levels.float())
+    print("")
+    print(logits_to_ordinal_predictions(logits))
+    print("")
+    """
 
-    loss = (logits_sigmoid*levels + (logits_sigmoid - logits)*(1-levels))
+    if class_weights is not None: class_weights = class_weights.float()
+    
+    loss = nnFunctional.binary_cross_entropy_with_logits(logits.float(), levels.float(), class_weights)
 
-    if class_weights is not None:
-        loss *= class_weights
-    
-    loss = torch.mean((-torch.sum(loss, dim=1)))
-    
     return loss
 
 
@@ -73,8 +75,21 @@ def effective_number_weights(
     - salida: (num_classes,)
     """
 
-    _, N = np.unique(labels, return_counts=True) #cantidades de cada clase
+    dict_labels = {clase: 0 for clase in range(1, num_classes+1)}
+    for label in labels:
+        dict_labels[label] = dict_labels[label]+1
 
-    w_c = [(1 - beta) / (1 - beta ** n_c) for n_c  in N]
+    N = dict_labels.values() #cantidades de cada clase
+
+    w_c = np.array([(1 - beta) / (1 - beta ** n_c) if n_c != 0 else 1 for n_c in N])
+    w_c = w_c / np.mean(w_c)
+
+    """
+    #descomentar para debug
+    print("dict_labels:",dict_labels, '\n')
+    print("N:", N, '\n')
+    print("wc:", w_c)
+    print("wc_mean:",np.mean(w_c))
+    """
 
     return torch.tensor(w_c)
