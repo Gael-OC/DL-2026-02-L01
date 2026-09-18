@@ -177,9 +177,9 @@ archivo generado o pull request integrado.
 #### Johan
 
 - [x] Implementar `labels_to_levels` para `K=2`, `K=3` y `K=7`.
-- [ ] Implementar `CoralLayer` con umbrales ordenados.
-- [ ] Implementar `MLPCoral`.
-- [ ] Implementar la pérdida CORAL sin aplicar sigmoid previamente.
+- [x] Implementar `CoralLayer` con umbrales ordenados.
+- [x] Implementar `MLPCoral`.
+- [x] Implementar la pérdida CORAL sin aplicar sigmoid previamente.
 - [x] Implementar `logits_to_ordinal_predictions`.
 - [ ] Añadir pruebas de formas, finitud y gradientes.
 
