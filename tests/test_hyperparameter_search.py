@@ -135,6 +135,79 @@ class HyperparameterSearchTests(unittest.TestCase):
             np.testing.assert_array_equal(kwargs["X_eval"], X[outer_test_idx])
             np.testing.assert_array_equal(kwargs["y_eval"], y[outer_test_idx])
 
+    @patch("main.run_training_cycle")
+    @patch("main.build_project_objects")
+    def test_outer_test_does_not_change_selected_configuration(
+        self,
+        build_project_objects_mock,
+        run_training_cycle_mock,
+    ) -> None:
+        y = np.tile(np.arange(3), 4)
+        original_X = np.zeros((12, 15), dtype=np.float32)
+        changed_X = original_X.copy()
+        first_outer_test_idx = main.split_for_validation(
+            y, n_splits=2, random_state=42
+        )[0][1]
+        changed_X[first_outer_test_idx] = 1.0
+
+        def artifacts_for(X: np.ndarray) -> dict:
+            return {
+                "X": X,
+                "y": y,
+                "classes": [1, 2, 3],
+                "class_to_idx": {1: 0, 2: 1, 3: 2},
+                "X_shape": X.shape,
+                "y_shape": y.shape,
+            }
+
+        build_project_objects_mock.side_effect = [
+            artifacts_for(original_X),
+            artifacts_for(changed_X),
+        ]
+        winning_config = HYPERPARAMETER_GRID[1]
+
+        def score_configuration(**kwargs) -> dict:
+            y_true = kwargs["y_eval"]
+            target_hidden_dim = (
+                winning_config["hidden_dim"]
+                if np.all(kwargs["X_eval"] == 0.0)
+                else HYPERPARAMETER_GRID[0]["hidden_dim"]
+            )
+            metrics = compute_all_metrics(y_true, y_true, num_classes=3)
+            metrics["mae_ordinal"] = float(
+                kwargs["hidden_dim"] != target_hidden_dim
+            )
+            return {
+                "metrics": metrics,
+                "y_true": y_true,
+                "y_pred": y_true,
+                "final_train_loss": 0.0,
+            }
+
+        run_training_cycle_mock.side_effect = score_configuration
+        results = [
+            main.train_one_experiment(
+                data_path="unused.csv",
+                target_name="GDS_R2",
+                epochs=1,
+                outer_folds=2,
+                inner_folds=2,
+            )
+            for _ in range(2)
+        ]
+
+        selected_configs = [
+            result["outer_folds"][0]["best_config"] for result in results
+        ]
+        self.assertEqual(selected_configs, [winning_config, winning_config])
+        self.assertEqual(
+            [
+                result["outer_folds"][0]["outer_metrics"]["mae_ordinal"]
+                for result in results
+            ],
+            [0.0, 1.0],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -198,7 +198,7 @@ sintéticas sin depender todavía de `main.py`.
 - [x] Elegir menor MAE; en empate, mayor QWK.
 - [x] Reentrenar desde cero sobre todo outer-train.
 - [x] Guardar la mejor configuración de cada outer fold.
-- [ ] Verificar con un caso controlado que outer-test no influye en la selección.
+- [x] Verificar con un caso controlado que outer-test no influye en la selección.
 
 #### Johan
 
