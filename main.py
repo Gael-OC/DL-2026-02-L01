@@ -30,6 +30,7 @@ from config import (  # noqa: E402
     DEFAULT_RANK_MODE,
     DEFAULT_TARGET,
     DEFAULT_WEIGHT_DECAY,
+    HYPERPARAMETER_GRID,
     TARGET_COLUMNS,
 )
 from data_loader import CognitiveDataset, load_dataframe  # noqa: E402
@@ -40,7 +41,11 @@ from evaluation import (  # noqa: E402
     format_classification_report,
 )
 from models import ShallowMultiClassNet  # noqa: E402
-from preprocessing import prepare_experiment_data, split_for_validation  # noqa: E402
+from preprocessing import (  # noqa: E402
+    labels_for_inner_stratification,
+    prepare_experiment_data,
+    split_for_validation,
+)
 from reporting import (  # noqa: E402
     experiment_to_row,
     format_ranking_console,
@@ -239,6 +244,17 @@ def run_training_cycle(
     }
 
 
+def select_best_inner_result(inner_grid_results: list[dict]) -> dict:
+    """Elige menor MAE medio y usa mayor QWK medio como desempate."""
+
+    if not inner_grid_results:
+        raise ValueError("No hay resultados internos para seleccionar.")
+    return min(
+        inner_grid_results,
+        key=lambda result: (result["mae_mean"], -result["qwk_mean"]),
+    )
+
+
 def train_one_experiment(
     data_path: str | Path,
     target_name: str = DEFAULT_TARGET,
@@ -294,60 +310,90 @@ def train_one_experiment(
         y_outer_train = y[outer_train_idx]
         X_outer_test = X[outer_test_idx]
         y_outer_test = y[outer_test_idx]
+        inner_stratification_labels = labels_for_inner_stratification(
+            y_outer_train,
+            target_name=target_name,
+            class_to_idx=artifacts["class_to_idx"],
+        )
 
         inner_mae_scores = []
         inner_qwk_scores = []
-        # TODO(alumno): recorrer HYPERPARAMETER_GRID aqui.
-        # Para cada configuracion, promediar MAE y QWK sobre estos folds
-        # internos. Quedarse con la de menor MAE; empate: mayor QWK.
+        inner_grid_results = []
         # No usar el fold externo de prueba para elegir hiperparametros.
         # No reportar el mejor fold interno como resultado final.
-        if can_make_stratified_splits(y_outer_train, inner_folds):
+        if can_make_stratified_splits(inner_stratification_labels, inner_folds):
             inner_splits = split_for_validation(
-                y_outer_train,
+                inner_stratification_labels,
                 n_splits=inner_folds,
                 random_state=seed + outer_fold_index,
             )
-            for inner_fold_index, (inner_train_idx, inner_val_idx) in enumerate(
-                inner_splits, start=1
-            ):
-                inner_result = run_training_cycle(
-                    X_train=X_outer_train[inner_train_idx],
-                    y_train=y_outer_train[inner_train_idx],
-                    X_eval=X_outer_train[inner_val_idx],
-                    y_eval=y_outer_train[inner_val_idx],
-                    num_classes=num_classes,
-                    hidden_dim=hidden_dim,
-                    dropout=dropout,
-                    learning_rate=learning_rate,
-                    weight_decay=weight_decay,
-                    batch_size=batch_size,
-                    epochs=epochs,
-                    seed=seed + outer_fold_index * 100 + inner_fold_index,
-                    device=device,
+            for candidate_config in HYPERPARAMETER_GRID:
+                candidate_mae_scores = []
+                candidate_qwk_scores = []
+                for inner_fold_index, (inner_train_idx, inner_val_idx) in enumerate(
+                    inner_splits, start=1
+                ):
+                    inner_result = run_training_cycle(
+                        X_train=X_outer_train[inner_train_idx],
+                        y_train=y_outer_train[inner_train_idx],
+                        X_eval=X_outer_train[inner_val_idx],
+                        y_eval=y_outer_train[inner_val_idx],
+                        num_classes=num_classes,
+                        hidden_dim=candidate_config["hidden_dim"],
+                        dropout=candidate_config["dropout"],
+                        learning_rate=candidate_config["learning_rate"],
+                        weight_decay=candidate_config["weight_decay"],
+                        batch_size=batch_size,
+                        epochs=epochs,
+                        seed=seed + outer_fold_index * 100 + inner_fold_index,
+                        device=device,
+                    )
+                    candidate_mae_scores.append(
+                        inner_result["metrics"]["mae_ordinal"]
+                    )
+                    candidate_qwk_scores.append(inner_result["metrics"]["qwk"])
+
+                inner_grid_results.append(
+                    {
+                        "config": dict(candidate_config),
+                        "mae_scores": candidate_mae_scores,
+                        "qwk_scores": candidate_qwk_scores,
+                        "mae_mean": float(np.mean(candidate_mae_scores)),
+                        "qwk_mean": float(np.mean(candidate_qwk_scores)),
+                    }
                 )
-                inner_mae_scores.append(inner_result["metrics"]["mae_ordinal"])
-                inner_qwk_scores.append(inner_result["metrics"]["qwk"])
+
+            selected_inner_result = select_best_inner_result(inner_grid_results)
+            inner_mae_scores = selected_inner_result["mae_scores"]
+            inner_qwk_scores = selected_inner_result["qwk_scores"]
         else:
+            selected_inner_result = None
             print(
                 f"Aviso: el fold externo {outer_fold_index} de {target_name} "
                 f"no admite {inner_folds} folds internos estratificados "
                 "(clase rara). Se omite la validacion interna en este fold."
             )
 
-        # Esta plantilla reentrena la configuracion fija con todo el
-        # entrenamiento externo. Cuando el grid este activo, reentrenar
-        # aqui la configuracion elegida por MAE interno.
+        final_config = (
+            selected_inner_result["config"]
+            if selected_inner_result
+            else {
+                "hidden_dim": hidden_dim,
+                "dropout": dropout,
+                "learning_rate": learning_rate,
+                "weight_decay": weight_decay,
+            }
+        )
         final_result = run_training_cycle(
             X_train=X_outer_train,
             y_train=y_outer_train,
             X_eval=X_outer_test,
             y_eval=y_outer_test,
             num_classes=num_classes,
-            hidden_dim=hidden_dim,
-            dropout=dropout,
-            learning_rate=learning_rate,
-            weight_decay=weight_decay,
+            hidden_dim=final_config["hidden_dim"],
+            dropout=final_config["dropout"],
+            learning_rate=final_config["learning_rate"],
+            weight_decay=final_config["weight_decay"],
             batch_size=batch_size,
             epochs=epochs,
             seed=seed + outer_fold_index * 1000,
@@ -358,17 +404,23 @@ def train_one_experiment(
             {
                 "outer_fold": outer_fold_index,
                 "inner_mae_mean": (
-                    float(np.mean(inner_mae_scores)) if inner_mae_scores else float("nan")
+                    selected_inner_result["mae_mean"]
+                    if selected_inner_result
+                    else float("nan")
                 ),
                 "inner_mae_std": (
                     float(np.std(inner_mae_scores)) if inner_mae_scores else float("nan")
                 ),
                 "inner_qwk_mean": (
-                    float(np.mean(inner_qwk_scores)) if inner_qwk_scores else float("nan")
+                    selected_inner_result["qwk_mean"]
+                    if selected_inner_result
+                    else float("nan")
                 ),
                 "inner_qwk_std": (
                     float(np.std(inner_qwk_scores)) if inner_qwk_scores else float("nan")
                 ),
+                "inner_grid_results": inner_grid_results,
+                "best_config": dict(final_config),
                 "outer_metrics": final_result["metrics"],
                 "y_true": final_result["y_true"],
                 "y_pred": final_result["y_pred"],
