@@ -244,6 +244,17 @@ def run_training_cycle(
     }
 
 
+def select_best_inner_result(inner_grid_results: list[dict]) -> dict:
+    """Elige menor MAE medio y usa mayor QWK medio como desempate."""
+
+    if not inner_grid_results:
+        raise ValueError("No hay resultados internos para seleccionar.")
+    return min(
+        inner_grid_results,
+        key=lambda result: (result["mae_mean"], -result["qwk_mean"]),
+    )
+
+
 def train_one_experiment(
     data_path: str | Path,
     target_name: str = DEFAULT_TARGET,
@@ -308,8 +319,6 @@ def train_one_experiment(
         inner_mae_scores = []
         inner_qwk_scores = []
         inner_grid_results = []
-        # TODO(alumno): promediar MAE y QWK de cada configuracion sobre estos
-        # folds internos. Quedarse con la de menor MAE; empate: mayor QWK.
         # No usar el fold externo de prueba para elegir hiperparametros.
         # No reportar el mejor fold interno como resultado final.
         if can_make_stratified_splits(inner_stratification_labels, inner_folds):
@@ -354,9 +363,11 @@ def train_one_experiment(
                     }
                 )
 
-            inner_mae_scores = inner_grid_results[0]["mae_scores"]
-            inner_qwk_scores = inner_grid_results[0]["qwk_scores"]
+            selected_inner_result = select_best_inner_result(inner_grid_results)
+            inner_mae_scores = selected_inner_result["mae_scores"]
+            inner_qwk_scores = selected_inner_result["qwk_scores"]
         else:
+            selected_inner_result = None
             print(
                 f"Aviso: el fold externo {outer_fold_index} de {target_name} "
                 f"no admite {inner_folds} folds internos estratificados "
@@ -386,16 +397,16 @@ def train_one_experiment(
             {
                 "outer_fold": outer_fold_index,
                 "inner_mae_mean": (
-                    inner_grid_results[0]["mae_mean"]
-                    if inner_grid_results
+                    selected_inner_result["mae_mean"]
+                    if selected_inner_result
                     else float("nan")
                 ),
                 "inner_mae_std": (
                     float(np.std(inner_mae_scores)) if inner_mae_scores else float("nan")
                 ),
                 "inner_qwk_mean": (
-                    inner_grid_results[0]["qwk_mean"]
-                    if inner_grid_results
+                    selected_inner_result["qwk_mean"]
+                    if selected_inner_result
                     else float("nan")
                 ),
                 "inner_qwk_std": (

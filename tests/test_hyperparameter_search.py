@@ -25,6 +25,17 @@ def fake_training_cycle(**kwargs) -> dict:
 
 
 class HyperparameterSearchTests(unittest.TestCase):
+    def test_selection_uses_lower_mae_then_higher_qwk(self) -> None:
+        candidates = [
+            {"name": "higher-mae", "mae_mean": 0.6, "qwk_mean": 0.9},
+            {"name": "lower-qwk", "mae_mean": 0.5, "qwk_mean": 0.2},
+            {"name": "winner", "mae_mean": 0.5, "qwk_mean": 0.4},
+        ]
+
+        selected = main.select_best_inner_result(candidates)
+
+        self.assertEqual(selected["name"], "winner")
+
     @patch("main.run_training_cycle", side_effect=fake_training_cycle)
     @patch("main.build_project_objects")
     def test_every_grid_configuration_runs_on_every_inner_fold(

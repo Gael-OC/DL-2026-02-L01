@@ -195,7 +195,7 @@ sintéticas sin depender todavía de `main.py`.
       originales para entrenamiento y evaluación.
 - [x] Recorrer las cuatro configuraciones de `HYPERPARAMETER_GRID`.
 - [x] Promediar MAE y QWK sobre todos los folds internos.
-- [ ] Elegir menor MAE; en empate, mayor QWK.
+- [x] Elegir menor MAE; en empate, mayor QWK.
 - [ ] Reentrenar desde cero sobre todo outer-train.
 - [ ] Guardar la mejor configuración de cada outer fold.
 - [ ] Verificar con un caso controlado que outer-test no influye en la selección.
