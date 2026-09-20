@@ -190,12 +190,15 @@ sintéticas sin depender todavía de `main.py`.
 
 #### Gael
 
-- [ ] Recorrer las cuatro configuraciones de `HYPERPARAMETER_GRID`.
-- [ ] Promediar MAE y QWK sobre todos los folds internos.
-- [ ] Elegir menor MAE; en empate, mayor QWK.
-- [ ] Reentrenar desde cero sobre todo outer-train.
-- [ ] Guardar la mejor configuración de cada outer fold.
-- [ ] Verificar con un caso controlado que outer-test no influye en la selección.
+- [x] Aplicar en `GDS` la agrupación de las clases originales 6 y 7 solo
+      para estratificar los folds internos, conservando las etiquetas
+      originales para entrenamiento y evaluación.
+- [x] Recorrer las cuatro configuraciones de `HYPERPARAMETER_GRID`.
+- [x] Promediar MAE y QWK sobre todos los folds internos.
+- [x] Elegir menor MAE; en empate, mayor QWK.
+- [x] Reentrenar desde cero sobre todo outer-train.
+- [x] Guardar la mejor configuración de cada outer fold.
+- [x] Verificar con un caso controlado que outer-test no influye en la selección.
 
 #### Johan
 
