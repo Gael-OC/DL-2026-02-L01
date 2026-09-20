@@ -108,18 +108,16 @@ class MLPCoral(nn.Module):
         num_features: int,
         num_classes: int,
         dropout: float = 0.15,
-        linear1: int = 32,
-        linear2: int = 16,
     ) -> None:
         super().__init__()
         self.num_features = num_features
         self.num_classes = num_classes
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(dropout)
-        self.bn1d = nn.BatchNorm1d(linear1)
-        self.fc1 = nn.Linear(num_features, linear1)
-        self.fc2 = nn.Linear(linear1, linear2)
-        self.CLayer = CoralLayer(linear2, num_classes)
+        self.bn1d = nn.BatchNorm1d(32)
+        self.fc1 = nn.Linear(num_features, 32)
+        self.fc2 = nn.Linear(32, 16)
+        self.CLayer = CoralLayer(16, num_classes)
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         hidden = self.fc1(inputs)

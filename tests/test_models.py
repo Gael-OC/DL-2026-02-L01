@@ -49,17 +49,15 @@ class ModelsTest(unittest.TestCase):
         """
         **ejemplo con forma 20x4 --> 4x16 --> 16x8 --> 3 clases de salida**
         """
-        batch_size = 20 # N
-        features_in = 4 # entradas
+        batch_size = 32 # N
+        features_in = 15 # entradas
         classes_out = 3 # clases de salida (k)
 
         input_ = torch.randint(low=0, high=2, size=(batch_size,features_in)).float()
 
         mlp = MLPCoral(
             num_features=features_in,
-            num_classes=classes_out,
-            linear1=16,
-            linear2=8,
+            num_classes=classes_out
         )
 
         logits = mlp.forward(input_)
