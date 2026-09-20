@@ -3,7 +3,6 @@
 import numpy as np
 import torch
 import torch.nn.functional as nnFunctional
-from src.ordinal import logits_to_ordinal_predictions
 
 
 def labels_to_levels(labels: torch.Tensor, num_classes: int) -> torch.Tensor:

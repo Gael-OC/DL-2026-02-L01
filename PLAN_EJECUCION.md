@@ -181,7 +181,7 @@ archivo generado o pull request integrado.
 - [x] Implementar `MLPCoral`.
 - [x] Implementar la pérdida CORAL sin aplicar sigmoid previamente.
 - [x] Implementar `logits_to_ordinal_predictions`.
-- [ ] Añadir pruebas de formas, finitud y gradientes.
+- [x] Añadir pruebas de formas, finitud y gradientes.
 
 **Cierre:** la base Softmax conserva folds correctos y CORAL supera pruebas
 sintéticas sin depender todavía de `main.py`.

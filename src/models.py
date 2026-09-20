@@ -83,7 +83,7 @@ class CoralLayer(nn.Module):
         biases = nn.Softplus().forward(biases)
         biases = torch.cumsum(biases, dim=0)
 
-        fc1 = nn.Linear(self.input_size, self.num_classes-1)
+        fc1 = nn.Linear(self.input_size, self.num_classes-1, bias=False)
         hidden = fc1(inputs)
         hidden = hidden + biases
         logits = torch.sigmoid(hidden)
@@ -97,7 +97,7 @@ class MLPCoral(nn.Module):
     MLP ordinal poco profunda con cabeza CORAL.
 
     Arquitectura sugerida:
-    15 -> Linear(32) -> ReLU -> BatchNorm1d -> Dropout
+    15 features -> Linear(32) -> ReLU -> BatchNorm1d -> Dropout
        -> Linear(16) -> ReLU
        -> CoralLayer(16, K)
 
