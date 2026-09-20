@@ -110,7 +110,7 @@ class HyperparameterSearchTests(unittest.TestCase):
         run_training_cycle_mock.side_effect = score_configuration
         outer_splits = main.split_for_validation(y, n_splits=2, random_state=42)
 
-        main.train_one_experiment(
+        results = main.train_one_experiment(
             data_path="unused.csv",
             target_name="GDS_R2",
             epochs=1,
@@ -123,10 +123,11 @@ class HyperparameterSearchTests(unittest.TestCase):
             calls_per_outer_fold - 1 :: calls_per_outer_fold
         ]
         self.assertEqual(len(final_calls), 2)
-        for final_call, (outer_train_idx, outer_test_idx) in zip(
-            final_calls, outer_splits
+        for outer_result, final_call, (outer_train_idx, outer_test_idx) in zip(
+            results["outer_folds"], final_calls, outer_splits
         ):
             kwargs = final_call.kwargs
+            self.assertEqual(outer_result["best_config"], winning_config)
             for parameter_name, expected_value in winning_config.items():
                 self.assertEqual(kwargs[parameter_name], expected_value)
             np.testing.assert_array_equal(kwargs["X_train"], X[outer_train_idx])

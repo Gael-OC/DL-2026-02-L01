@@ -420,6 +420,7 @@ def train_one_experiment(
                     float(np.std(inner_qwk_scores)) if inner_qwk_scores else float("nan")
                 ),
                 "inner_grid_results": inner_grid_results,
+                "best_config": dict(final_config),
                 "outer_metrics": final_result["metrics"],
                 "y_true": final_result["y_true"],
                 "y_pred": final_result["y_pred"],

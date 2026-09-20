@@ -197,7 +197,7 @@ sintéticas sin depender todavía de `main.py`.
 - [x] Promediar MAE y QWK sobre todos los folds internos.
 - [x] Elegir menor MAE; en empate, mayor QWK.
 - [x] Reentrenar desde cero sobre todo outer-train.
-- [ ] Guardar la mejor configuración de cada outer fold.
+- [x] Guardar la mejor configuración de cada outer fold.
 - [ ] Verificar con un caso controlado que outer-test no influye en la selección.
 
 #### Johan
