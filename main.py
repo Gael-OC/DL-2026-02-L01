@@ -374,19 +374,26 @@ def train_one_experiment(
                 "(clase rara). Se omite la validacion interna en este fold."
             )
 
-        # Esta plantilla reentrena la configuracion fija con todo el
-        # entrenamiento externo. Cuando el grid este activo, reentrenar
-        # aqui la configuracion elegida por MAE interno.
+        final_config = (
+            selected_inner_result["config"]
+            if selected_inner_result
+            else {
+                "hidden_dim": hidden_dim,
+                "dropout": dropout,
+                "learning_rate": learning_rate,
+                "weight_decay": weight_decay,
+            }
+        )
         final_result = run_training_cycle(
             X_train=X_outer_train,
             y_train=y_outer_train,
             X_eval=X_outer_test,
             y_eval=y_outer_test,
             num_classes=num_classes,
-            hidden_dim=hidden_dim,
-            dropout=dropout,
-            learning_rate=learning_rate,
-            weight_decay=weight_decay,
+            hidden_dim=final_config["hidden_dim"],
+            dropout=final_config["dropout"],
+            learning_rate=final_config["learning_rate"],
+            weight_decay=final_config["weight_decay"],
             batch_size=batch_size,
             epochs=epochs,
             seed=seed + outer_fold_index * 1000,
