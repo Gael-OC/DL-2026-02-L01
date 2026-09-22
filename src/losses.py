@@ -1,94 +1,51 @@
-"""Perdidas y ponderaciones que los alumnos deben implementar."""
+"""Perdida CORAL y pesos de clase del laboratorio."""
 
 import numpy as np
 import torch
-import torch.nn.functional as nnFunctional
+import torch.nn.functional as F
 
 
 def labels_to_levels(labels: torch.Tensor, num_classes: int) -> torch.Tensor:
-    """
-    TODO(alumno):
-    Convierte clases enteras a umbrales binarios acumulativos.
+    """Convierte etiquetas 0..K-1 en K-1 umbrales acumulativos."""
 
-    Ejemplo:
-    Si num_classes = 5 y la etiqueta es 2, el vector debe ser [1, 1, 0, 0].
-
-    Formas:
-    - labels: (batch_size,)
-    - salida: (batch_size, num_classes - 1)
-    """
-    umbrales = np.arange(num_classes)[1:]
-    levels = (np.array(labels)[:, np.newaxis] > umbrales).astype(int)
-    return torch.tensor(levels)
+    thresholds = torch.arange(num_classes - 1, device=labels.device)
+    return (labels[:, None] > thresholds).to(torch.float32)
 
 
 def coral_loss(
-    logits: torch.Tensor, # y predicho
-    labels: torch.Tensor, # y
-    num_classes: int, # K
-    class_weights: torch.Tensor | None = None, # W_k o w_c
+    logits: torch.Tensor,
+    labels: torch.Tensor,
+    num_classes: int,
+    class_weights: torch.Tensor | None = None,
 ) -> torch.Tensor:
-    """
-    TODO(alumno):
-    BCE con logits sobre los K-1 umbrales ordinales.
+    """BCE con logits, promediada por muestra y ponderada por su clase."""
 
-    Formas:
-    - logits: (batch_size, num_classes - 1)
-    - labels: (batch_size,)
-    - class_weights: (num_classes,) o None
-    """
-    levels = labels_to_levels(labels, num_classes) #Y_nk
-
-    """
-    #descomentar para debug
-    print(logits.float())
-    print("")
-    print(levels.float())
-    print("")
-    print(logits_to_ordinal_predictions(logits))
-    print("")
-    """
-
-    if class_weights is not None: class_weights = class_weights.float()
-    
-    loss = nnFunctional.binary_cross_entropy_with_logits(logits.float(), levels.float(), class_weights)
-
-    return loss
+    levels = labels_to_levels(labels, num_classes).to(logits.dtype)
+    sample_losses = F.binary_cross_entropy_with_logits(
+        logits, levels, reduction="none"
+    ).mean(dim=1)
+    if class_weights is not None:
+        weights = class_weights.to(device=logits.device, dtype=logits.dtype)
+        sample_losses = sample_losses * weights[labels]
+    return sample_losses.mean()
 
 
 def effective_number_weights(
-    labels: np.ndarray, #y
-    num_classes: int, #k
+    labels: np.ndarray,
+    num_classes: int,
     beta: float = 0.99,
 ) -> torch.Tensor:
-    """
-    TODO(alumno):
-    Pesos por numero efectivo de muestras:
+    """Pesos efectivos para clases 0..K-1; una clase ausente recibe peso cero."""
 
-        w_c = (1 - beta) / (1 - beta ** n_c)
+    if not 0 <= beta < 1:
+        raise ValueError("beta debe estar entre 0 y 1 (sin incluir 1).")
 
-    Normalizar los pesos para que su media sea 1.
+    counts = np.bincount(np.asarray(labels, dtype=np.int64), minlength=num_classes)
+    if counts.size != num_classes or not counts.any():
+        raise ValueError("labels debe contener clases entre 0 y num_classes - 1.")
 
-    Formas:
-    - labels: (N,)
-    - salida: (num_classes,)
-    """
-
-    dict_labels = {clase: 0 for clase in range(1, num_classes+1)}
-    for label in labels:
-        dict_labels[label] = dict_labels[label]+1
-
-    N = dict_labels.values() #cantidades de cada clase
-
-    w_c = np.array([(1 - beta) / (1 - beta ** n_c) if n_c != 0 else 1 for n_c in N])
-    w_c = w_c / np.mean(w_c)
-
-    """
-    #descomentar para debug
-    print("dict_labels:",dict_labels, '\n')
-    print("N:", N, '\n')
-    print("wc:", w_c)
-    print("wc_mean:",np.mean(w_c))
-    """
-
-    return torch.tensor(w_c)
+    present = counts > 0
+    weights = np.zeros(num_classes, dtype=np.float64)
+    weights[present] = (1 - beta) / (1 - beta ** counts[present])
+    weights /= weights.mean()
+    return torch.tensor(weights, dtype=torch.float32)

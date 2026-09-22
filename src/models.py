@@ -2,6 +2,7 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class ShallowMultiClassNet(nn.Module):
     """
@@ -40,59 +41,26 @@ class ShallowMultiClassNet(nn.Module):
 
 class CoralLayer(nn.Module):
     """
-    TODO(alumno):
-    Capa de salida CORAL.
+    Puntaje compartido y K-1 umbrales ordenados para CORAL.
 
-    Debe producir K-1 logits acumulativos a partir de un vector de
-    caracteristicas de tamano input_size.
-
-    Pistas:
-    - un peso lineal compartido hacia un unico puntaje latente,
-    - K-1 sesgos ordenados,
-    - las diferencias entre sesgos pueden construirse con softplus y cumsum
-      para forzar b0 >= b1 >= ... >= b_{K-2}.
-
-    Formas esperadas:
-    - x: (batch_size, input_size) (input size es 16 segun la arq recomendada)
-    - salida: (batch_size, num_classes - 1)
+    Devuelve logits de forma (batch_size, num_classes - 1).
     """
 
     def __init__(self, input_size: int, num_classes: int) -> None:
         super().__init__()
         self.input_size = input_size
         self.num_classes = num_classes
+        self.score = nn.Linear(input_size, 1, bias=False)
+        self.biases = nn.Parameter(torch.zeros(num_classes - 1))
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        """
-        |---------------------------------------------------------------\n
-        **inputs -> sumar bias_k -> sigmoide**\n
-        |---------------------------------------------------------------\n
-        ej: con 2 clases seria solo b_0 (k-1 biases) ya que de esa forma seran los logits/levels\n
-        cada bias se asigna a cada clase\n
-        s = w * h | w: pesos, h: inputs, s: hidden\n
-        logits o zk = s + bk = pesos_clase*inputs + bias_clase \n
-        |---------------------------------------------------------------\n
-        nn.Softplus() = ln(1+e^x), es como un ReLU con curva suavizada\n
-        torch.cumsum() = suma de elementos anteriores de la lista para cada elemento
-        """
-
-        if inputs.dtype != torch.float32: raise TypeError("Asegurarse de hacer inputs.float() antes.")
-
-        biases = torch.tensor([k for k in range(self.num_classes-1)]).float()
-        biases = nn.Softplus().forward(biases)
-        biases = torch.cumsum(biases, dim=0)
-
-        fc1 = nn.Linear(self.input_size, self.num_classes-1, bias=False)
-        hidden = fc1(inputs)
-        hidden = hidden + biases
-        logits = torch.sigmoid(hidden)
-
-        return logits
+        gaps = F.softplus(self.biases[1:]).cumsum(dim=0)
+        ordered_biases = torch.cat((self.biases[:1], self.biases[:1] - gaps))
+        return self.score(inputs) + ordered_biases
 
 
 class MLPCoral(nn.Module):
     """
-    TODO(alumno):
     MLP ordinal poco profunda con cabeza CORAL.
 
     Arquitectura sugerida:
@@ -125,5 +93,6 @@ class MLPCoral(nn.Module):
         hidden = self.bn1d(hidden)
         hidden = self.dropout(hidden)
         hidden = self.fc2(hidden)
+        hidden = self.relu(hidden)
         logits = self.CLayer(hidden)
         return logits

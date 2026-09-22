@@ -1,36 +1,28 @@
-"""Utilidades ordinales que los alumnos deben implementar."""
+"""Decodificacion y probabilidades ordinales de CORAL."""
 
 import torch
-import numpy as np
-import torch.nn.functional as nnFunctional
 
 @torch.no_grad()
 def logits_to_ordinal_predictions(
     logits: torch.Tensor,
     threshold: float = 0.5,
 ) -> torch.Tensor:
-    """
-    TODO(alumno):
-    Convierte logits CORAL en una clase entera.
+    """Cuenta umbrales superados y devuelve clases 0..K-1."""
 
-    Pista:
-    aplicar sigmoide, contar cuantos umbrales superan threshold
-    y devolver ese conteo como y_hat.
+    cumulative = torch.sigmoid(logits).cummin(dim=1).values
+    return (cumulative > threshold).sum(dim=1)
 
-    Formas:
-    - logits: (batch_size, K-1)
-    - salida: (batch_size,)
-    """
-    logits_sigmoid = nnFunctional.sigmoid(logits)
-    
-    """
-    #descomentar para debug
-    print("logits_sigmoid:",logits_sigmoid)
-    """
 
-    y_hat = [
-        sum(logit > threshold for logit in fila)+1 #suma 1 si se cumple
-        for fila in logits_sigmoid
-        ]
+@torch.no_grad()
+def logits_to_ordinal_probabilities(logits: torch.Tensor) -> torch.Tensor:
+    """Convierte probabilidades acumulativas en probabilidades (B, K)."""
 
-    return torch.tensor(y_hat)
+    cumulative = torch.sigmoid(logits).cummin(dim=1).values
+    return torch.cat(
+        (
+            1 - cumulative[:, :1],
+            cumulative[:, :-1] - cumulative[:, 1:],
+            cumulative[:, -1:],
+        ),
+        dim=1,
+    )
