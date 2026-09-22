@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 
 import matplotlib
@@ -167,6 +168,62 @@ def write_text(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def save_fold_details(results_list: list[dict], output_dir: str | Path) -> dict[str, Path]:
+    """Guarda configuraciones externas y predicciones OOF con su indice."""
+
+    config_rows = []
+    oof_rows = []
+    max_classes = max(len(results["classes"]) for results in results_list)
+    for results in results_list:
+        seen = []
+        for fold in results["outer_folds"]:
+            indices = np.asarray(fold["test_indices"])
+            probabilities = np.asarray(fold["y_proba"])
+            if probabilities.shape != (len(indices), len(results["classes"])):
+                raise ValueError("Las probabilidades OOF no coinciden con el fold externo.")
+            config_rows.append({
+                "algorithm": results["algorithm"],
+                "target": results["target_name"],
+                "outer_fold": fold["outer_fold"],
+                "best_config": json.dumps(fold["best_config"], sort_keys=True),
+                "class_labels": json.dumps(results["classes"]),
+                "inner_mae_mean": fold["inner_mae_mean"],
+                "inner_qwk_mean": fold["inner_qwk_mean"],
+            })
+            for position, original_index in enumerate(indices):
+                row = {
+                    "algorithm": results["algorithm"],
+                    "target": results["target_name"],
+                    "outer_fold": fold["outer_fold"],
+                    "original_index": int(original_index),
+                    "y_true": int(fold["y_true"][position]),
+                    "y_pred": int(fold["y_pred"][position]),
+                }
+                row.update({
+                    f"prob_{class_index}": float(probability)
+                    for class_index, probability in enumerate(probabilities[position])
+                })
+                oof_rows.append(row)
+            seen.extend(indices.tolist())
+        if sorted(seen) != list(range(results["y_shape"][0])):
+            raise ValueError("Cada indice externo debe aparecer exactamente una vez.")
+
+    output_path = Path(output_dir)
+    paths = {
+        "configuraciones": output_path / "configuraciones_folds.csv",
+        "predicciones_oof": output_path / "predicciones_oof.csv",
+    }
+    write_csv(paths["configuraciones"], config_rows, [
+        "algorithm", "target", "outer_fold", "best_config", "class_labels",
+        "inner_mae_mean", "inner_qwk_mean",
+    ])
+    write_csv(paths["predicciones_oof"], oof_rows, [
+        "algorithm", "target", "outer_fold", "original_index", "y_true", "y_pred",
+        *[f"prob_{index}" for index in range(max_classes)],
+    ])
+    return paths
+
+
 def plot_metric_bars(
     rows: list[dict], metric: str, output_path: Path, ylabel: str
 ) -> None:
@@ -244,6 +301,8 @@ def plot_confusion_matrix(
     axis.set_xlabel("Predicho")
     axis.set_ylabel("Real")
     axis.set_title(title)
+    axis.set_xticks(np.arange(matrix.shape[1]))
+    axis.set_yticks(np.arange(matrix.shape[0]))
     for row_index in range(matrix.shape[0]):
         for col_index in range(matrix.shape[1]):
             axis.text(

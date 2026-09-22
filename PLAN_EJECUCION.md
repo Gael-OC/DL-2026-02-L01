@@ -213,14 +213,21 @@ pruebas unitarias.
 
 ### H3 — integración P0 en `GDS_R2`
 
-- [ ] Integrar Softmax fijo mediante el contrato común.
-- [ ] Integrar Softmax HP mediante el contrato común.
-- [ ] Integrar CORAL sin pesos.
-- [ ] Integrar CORAL con pesos.
-- [ ] Producir cuatro filas comparables para `GDS_R2`.
-- [ ] Guardar la configuración elegida por outer fold.
-- [ ] Guardar predicciones OOF y probabilidades.
-- [ ] Revisar manualmente una matriz de confusión y una corrida.
+- [x] Integrar Softmax fijo mediante el contrato común.
+- [x] Integrar Softmax HP mediante el contrato común.
+- [x] Integrar CORAL sin pesos.
+- [x] Integrar CORAL con pesos.
+- [x] Producir cuatro filas comparables para `GDS_R2`.
+- [x] Guardar la configuración elegida por outer fold.
+- [x] Guardar predicciones OOF y probabilidades.
+- [x] Revisar manualmente una matriz de confusión y una corrida.
+
+**Evidencia H3 (smoke test, no resultados finales):**
+`python main.py --data-path 'dataset/15 atributos R0-R5.sav' --target-name GDS_R2 --outer-folds 2 --inner-folds 2 --epochs 1 --output-dir results/h3_gds_r2_smoke`.
+Generó cuatro filas, `configuraciones_folds.csv`, `predicciones_oof.csv` y
+cuatro matrices de confusión. Cada método tiene 1119 índices OOF distintos
+(0..1118), una vez cada uno. Se revisó el último fold de CORAL con pesos:
+la matriz suma 559 casos y no hay predicciones de la clase 3 con una época.
 
 **Cierre P0 parcial:** los cuatro métodos obligatorios funcionan de extremo a
 extremo en `GDS_R2`.
