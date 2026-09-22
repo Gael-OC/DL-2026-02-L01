@@ -58,17 +58,17 @@ class ModelsTest(unittest.TestCase):
         biases = torch.tensor([k for k in range(2)]).float()
         biases = nn.Softplus().forward(biases)
         biases = torch.cumsum(biases, dim=0)
-        fc1 = nn.Linear(4, 2, bias=False)
+        fc1 = nn.Linear(4, 2)
         hidden = fc1(torch.tensor([[1,2,4,8],[1,1,2,2],[1,1,1,1]]).float())
         logits = hidden + biases
 
         example = torch.tensor([
-            [5.1113, 3.4741],
-            [2.1748, 2.0982],
-            [1.8326, 2.0480]
+            [5.5521, 3.1073],
+            [2.6155, 1.7314],
+            [2.2734, 1.6812]
         ])
 
-        print("\n|| test_models.py: test_forward ||")
+        print("\n|| test_models.py: test_forward_layer ||")
         print("example:\n", example, f'\n\n', example.tolist(), f'\n',)
         print("logits:\n", logits, f'\n\n', logits.tolist(), f'\n',)
         print("Se usaron 4 decimales para evaluar la similitud en promedio (valor esperado vs real)\n")
