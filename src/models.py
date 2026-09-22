@@ -61,6 +61,8 @@ class CoralLayer(nn.Module):
         super().__init__()
         self.input_size = input_size
         self.num_classes = num_classes
+        self.fc1 = nn.Linear(self.input_size, self.num_classes-1)
+        self.softplus = nn.Softplus()
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         """
@@ -79,13 +81,11 @@ class CoralLayer(nn.Module):
         if inputs.dtype != torch.float32: raise TypeError("Asegurarse de hacer inputs.float() antes.")
 
         biases = torch.tensor([k for k in range(self.num_classes-1)]).float()
-        biases = nn.Softplus().forward(biases)
+        biases = self.softplus.forward(biases)
         biases = torch.cumsum(biases, dim=0)
 
-        fc1 = nn.Linear(self.input_size, self.num_classes-1, bias=False)
-        hidden = fc1(inputs)
-        hidden = hidden + biases
-        logits = torch.sigmoid(hidden)
+        hidden = self.fc1(inputs)
+        logits = hidden + biases
 
         return logits
 

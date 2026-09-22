@@ -29,7 +29,7 @@ def logits_to_ordinal_predictions(
     """
 
     y_hat = [
-        sum(logit > threshold for logit in fila)+1 #suma 1 si se cumple
+        sum(logit > threshold for logit in fila) #suma 1 si se cumple
         for fila in logits_sigmoid
         ]
 

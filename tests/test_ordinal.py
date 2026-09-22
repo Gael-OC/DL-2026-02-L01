@@ -17,10 +17,13 @@ class OrdinalTest(unittest.TestCase):
         [0.8699, 0.2689, 0.1824, 0.2142],\n
         [0.8699, 0.8581, 0.8455, 0.8320]\n
     ])\n
-    y_hat: tensor([3, 2, 5])
+    y_hat: tensor([2, 1, 4])
     """
-    def test_ltop(self):
-        y_hat_esperado = torch.tensor([3, 2, 5])
+    def test_logits_to_ordinal_predictions(self):
+        """
+        test para probar funcionamiento de logits_to_ordinal_predictions.
+        """
+        y_hat_esperado = torch.tensor([2, 1, 4])
         logits = torch.tensor([[2.1, 1.8, -2.1, -1.8],[1.9, -1., -1.5, -1.3],[1.9, 1.8, 1.7, 1.6]])
         y_hat = logits_to_ordinal_predictions(logits)
 

@@ -3,7 +3,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as nnFunctional
-
+from ordinal import logits_to_ordinal_predictions
 
 def labels_to_levels(labels: torch.Tensor, num_classes: int) -> torch.Tensor:
     """
@@ -17,7 +17,7 @@ def labels_to_levels(labels: torch.Tensor, num_classes: int) -> torch.Tensor:
     - labels: (batch_size,)
     - salida: (batch_size, num_classes - 1)
     """
-    umbrales = np.arange(num_classes)[1:]
+    umbrales = np.arange(num_classes-1)
     levels = (np.array(labels)[:, np.newaxis] > umbrales).astype(int)
     return torch.tensor(levels)
 
@@ -39,18 +39,20 @@ def coral_loss(
     """
     levels = labels_to_levels(labels, num_classes) #Y_nk
 
+    if class_weights is not None: class_weights = class_weights[1:].float()
+
     """
     #descomentar para debug
-    print(logits.float())
+    print("logits:\n",logits.float())
     print("")
-    print(levels.float())
+    print("levels:\n",levels.float())
     print("")
-    print(logits_to_ordinal_predictions(logits))
+    print("y_hat:\n",logits_to_ordinal_predictions(logits))
+    print("")
+    print("class_weights:\n",class_weights)
     print("")
     """
 
-    if class_weights is not None: class_weights = class_weights.float()
-    
     loss = nnFunctional.binary_cross_entropy_with_logits(logits.float(), levels.float(), class_weights)
 
     return loss
@@ -74,9 +76,12 @@ def effective_number_weights(
     - salida: (num_classes,)
     """
 
-    dict_labels = {clase: 0 for clase in range(1, num_classes+1)}
+    dict_labels = {clase: 0 for clase in range(num_classes)}
     for label in labels:
-        dict_labels[label] = dict_labels[label]+1
+        if dict_labels[label]:
+            dict_labels[label] = dict_labels[label]+1
+            continue
+        dict_labels[label] = 1
 
     N = dict_labels.values() #cantidades de cada clase
 
