@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from config import DEFAULT_ALGORITHM, DEFAULT_RANK_METRIC, MINIMIZE_METRICS
-from evaluation import METRIC_KEYS
+from evaluation import METRIC_KEYS, compute_confusion_matrix
 
 DISPLAY_NAMES = {
     "accuracy": "Acc",
@@ -173,6 +173,7 @@ def save_fold_details(results_list: list[dict], output_dir: str | Path) -> dict[
 
     config_rows = []
     oof_rows = []
+    coverage_rows = []
     max_classes = max(len(results["classes"]) for results in results_list)
     for results in results_list:
         seen = []
@@ -207,11 +208,20 @@ def save_fold_details(results_list: list[dict], output_dir: str | Path) -> dict[
             seen.extend(indices.tolist())
         if sorted(seen) != list(range(results["y_shape"][0])):
             raise ValueError("Cada indice externo debe aparecer exactamente una vez.")
+        coverage_rows.append({
+            "method": results["method"],
+            "target": results["target_name"],
+            "n_expected": results["y_shape"][0],
+            "n_oof": len(seen),
+            "n_unique": len(set(seen)),
+            "status": "complete",
+        })
 
     output_path = Path(output_dir)
     paths = {
         "configuraciones": output_path / "configuraciones_folds.csv",
         "predicciones_oof": output_path / "predicciones_oof.csv",
+        "verificacion_oof": output_path / "verificacion_oof.csv",
     }
     write_csv(paths["configuraciones"], config_rows, [
         "algorithm", "target", "outer_fold", "best_config", "class_labels",
@@ -221,7 +231,77 @@ def save_fold_details(results_list: list[dict], output_dir: str | Path) -> dict[
         "algorithm", "target", "outer_fold", "original_index", "y_true", "y_pred",
         *[f"prob_{index}" for index in range(max_classes)],
     ])
+    write_csv(paths["verificacion_oof"], coverage_rows, [
+        "method", "target", "n_expected", "n_oof", "n_unique", "status",
+    ])
     return paths
+
+
+def save_outer_fold(fold: dict, classes: list, output_dir: str | Path) -> None:
+    """Persiste un fold apenas termina, incluso si falla otro posterior."""
+
+    output_path = Path(output_dir)
+    indices = np.asarray(fold["test_indices"])
+    probabilities = np.asarray(fold["y_proba"])
+    if probabilities.shape != (len(indices), len(classes)):
+        raise ValueError("Las probabilidades OOF no coinciden con el fold externo.")
+    rows = []
+    for position, original_index in enumerate(indices):
+        row = {
+            "original_index": int(original_index),
+            "y_true": int(fold["y_true"][position]),
+            "y_pred": int(fold["y_pred"][position]),
+        }
+        row.update({
+            f"prob_{index}": float(value)
+            for index, value in enumerate(probabilities[position])
+        })
+        rows.append(row)
+    write_csv(output_path / "predicciones_oof.csv", rows, [
+        "original_index", "y_true", "y_pred",
+        *[f"prob_{index}" for index in range(len(classes))],
+    ])
+    details = {
+        "outer_fold": fold["outer_fold"],
+        "n_test": len(indices),
+        "best_config": fold["best_config"],
+        "inner_mae_mean": fold["inner_mae_mean"] if np.isfinite(fold["inner_mae_mean"]) else None,
+        "inner_qwk_mean": fold["inner_qwk_mean"] if np.isfinite(fold["inner_qwk_mean"]) else None,
+        "outer_metrics": fold["outer_metrics"],
+        "final_train_loss": fold["final_train_loss"],
+        "class_labels": classes,
+    }
+    write_text(output_path / "metricas.json", json.dumps(details, indent=2) + "\n")
+    matrix = compute_confusion_matrix(
+        fold["y_true"], fold["y_pred"], num_classes=len(classes)
+    )
+    write_csv(output_path / "confusion.csv", [
+        {"real": classes[index], **{
+            str(label): int(value) for label, value in zip(classes, matrix[index])
+        }}
+        for index in range(len(classes))
+    ], ["real", *[str(label) for label in classes]])
+    plot_confusion_matrix(matrix, f"Fold externo {fold['outer_fold']}", output_path / "confusion.png")
+
+
+def save_target_confusion(results: dict, output_dir: str | Path) -> None:
+    """Agrega las predicciones externas de todos los folds del metodo/objetivo."""
+
+    folds = results["outer_folds"]
+    matrix = compute_confusion_matrix(
+        np.concatenate([fold["y_true"] for fold in folds]),
+        np.concatenate([fold["y_pred"] for fold in folds]),
+        num_classes=len(results["classes"]),
+    )
+    output_path = Path(output_dir)
+    classes = results["classes"]
+    write_csv(output_path / "confusion_oof.csv", [
+        {"real": classes[index], **{
+            str(label): int(value) for label, value in zip(classes, matrix[index])
+        }}
+        for index in range(len(classes))
+    ], ["real", *[str(label) for label in classes]])
+    plot_confusion_matrix(matrix, "Confusion OOF", output_path / "confusion_oof.png")
 
 
 def plot_metric_bars(

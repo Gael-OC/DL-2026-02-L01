@@ -234,14 +234,33 @@ extremo en `GDS_R2`.
 
 ### H4 — seis objetivos y trazabilidad
 
-- [ ] Ejecutar los cuatro métodos en `GDS_R1` a `GDS_R5`.
-- [ ] Ejecutar `GDS` con la excepción acordada.
-- [ ] Separar salidas por corrida, método, objetivo y fold.
-- [ ] Guardar errores de ejecución como fallos, no como resultados vacíos.
-- [ ] Agregar matrices de confusión por método y objetivo.
-- [ ] Generar tablas con media y desviación externa.
-- [ ] Verificar que todos los índices externos aparecen exactamente una vez.
-- [ ] Reproducir al menos una corrida desde un checkout limpio.
+- [x] Ejecutar los cuatro métodos en `GDS_R1` a `GDS_R5`.
+- [x] Ejecutar `GDS` con la excepción acordada.
+- [x] Separar salidas por corrida, método, objetivo y fold.
+- [x] Guardar errores de ejecución como fallos, no como resultados vacíos.
+- [x] Agregar matrices de confusión por método y objetivo.
+- [x] Generar tablas con media y desviación externa.
+- [x] Verificar que todos los índices externos aparecen exactamente una vez.
+- [x] Reproducir al menos una corrida desde un checkout limpio.
+
+**Evidencia H4 (22/09/2026):** con `lab_pytorch` en CPU y semilla 42 se ejecutó
+`python main.py --data-path 'dataset/15 atributos R0-R5.sav' --all-targets --output-dir results/h4_20260922_seed42`
+(20 épocas; 5 folds externos y 3 internos, salvo `GDS` con 2 y 2). La corrida
+terminó sin fallos: 24 filas método/objetivo, 108 folds externos, nueve medias
+y desviaciones finitas por fila, y 27 selecciones internas de Softmax HP con
+MAE y QWK finitos. `results/h4_20260922_seed42/estado.json` registra el estado;
+cada método/objetivo tiene estado propio, confusión OOF agregada y artefactos
+por fold. `verificacion_oof.csv` confirma 1119 índices únicos (0..1118) para
+cada una de las 24 combinaciones. Los resultados de H3 no entraron en estas
+tablas. La asignación índice/fold externo coincide entre los cuatro métodos
+para cada objetivo.
+
+Se repitió Softmax fijo en `GDS_R2` desde un clon local limpio y desacoplado,
+en `HEAD` 56f486b, con la ruta absoluta al mismo SAV y los mismos parámetros
+por defecto. Las 1119 filas OOF y la fila de nueve métricas coincidieron
+exactamente. La lógica numérica de entrenamiento no cambió entre ese `HEAD` y
+H4; los cambios sin commit de H4 afectan la trazabilidad y los reportes. Las
+salidas generadas siguen ignoradas por Git según el plan del equipo.
 
 **Cierre P0:** existe una entrega completa aunque no se alcance ninguna
 extensión.

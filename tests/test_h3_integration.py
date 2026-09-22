@@ -47,10 +47,17 @@ class H3IntegrationTests(unittest.TestCase):
                 configs = list(csv.DictReader(handle))
             with paths["predicciones_oof"].open(newline="") as handle:
                 oof = list(csv.DictReader(handle))
+            with paths["verificacion_oof"].open(newline="") as handle:
+                coverage = list(csv.DictReader(handle))
 
         self.assertEqual(len(configs), 4 * 2)
         self.assertTrue(all(row["class_labels"] == "[1, 2, 3]" for row in configs))
         self.assertEqual(len(oof), 4 * len(y))
+        self.assertEqual(len(coverage), 4)
+        self.assertTrue(all(
+            int(row["n_expected"]) == int(row["n_oof"]) == int(row["n_unique"]) == len(y)
+            for row in coverage
+        ))
         for result in results:
             rows = [row for row in oof if row["algorithm"] == result["algorithm"]]
             self.assertEqual(sorted(int(row["original_index"]) for row in rows), list(range(len(y))))

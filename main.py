@@ -1,8 +1,12 @@
 """Punto de entrada minimo del proyecto."""
 
 import argparse
+from datetime import datetime
+import json
 from pathlib import Path
 import sys
+import traceback
+from typing import Callable
 
 import numpy as np
 import torch
@@ -62,6 +66,9 @@ from reporting import (  # noqa: E402
     resolve_rank_mode,
     save_experiment_reports,
     save_fold_details,
+    save_outer_fold,
+    save_target_confusion,
+    write_text,
 )
 
 
@@ -288,6 +295,7 @@ def train_one_experiment(
     seed: int = DEFAULT_RANDOM_SEED,
     device_name: str = "cpu",
     method: str = "softmax_hp",
+    on_outer_fold: Callable[[dict, list], None] | None = None,
 ) -> dict:
     """Ejecuta los mismos folds externos para el metodo solicitado."""
 
@@ -454,6 +462,8 @@ def train_one_experiment(
                 "final_train_loss": final_result["final_train_loss"],
             }
         )
+        if on_outer_fold is not None:
+            on_outer_fold(outer_results[-1], artifacts["classes"])
 
     summary = {}
     for metric_name in METRIC_KEYS:
@@ -693,6 +703,26 @@ def main() -> None:
 
     parser = build_argument_parser()
     args = parser.parse_args()
+    output_path = Path(args.output_dir)
+    if args.output_dir == DEFAULT_OUTPUT_DIR:
+        output_path = output_path / f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    output_path.mkdir(parents=True, exist_ok=False)
+    run_status = {
+        "status": "running",
+        "command": [sys.executable, *sys.argv],
+        "output_dir": str(output_path),
+        "seed": args.seed,
+        "outer_folds": args.outer_folds,
+        "inner_folds": args.inner_folds,
+        "gds_outer_folds": args.gds_outer_folds,
+        "gds_inner_folds": args.gds_inner_folds,
+        "gds_inner_stratification": "agrupar clases originales 6 y 7; entrenar y evaluar con etiquetas originales",
+        "failures": [],
+    }
+    def write_run_status() -> None:
+        write_text(output_path / "estado.json", json.dumps(run_status, indent=2) + "\n")
+
+    write_run_status()
 
     if args.all_targets:
         target_names = list(TARGET_COLUMNS)
@@ -705,7 +735,6 @@ def main() -> None:
         target_names = [args.target_name]
 
     rows = []
-    confusion_by_target = {}
     all_results = []
     for target_name in target_names:
         outer_folds, inner_folds = folds_for_target(
@@ -718,49 +747,81 @@ def main() -> None:
         )
         for method in args.methods:
             print(f"\n=== {METHOD_NAMES[method]} / {target_name} ===")
-            results = train_one_experiment(
-                data_path=args.data_path,
-                target_name=target_name,
-                hidden_dim=args.hidden_dim,
-                dropout=args.dropout,
-                learning_rate=args.learning_rate,
-                weight_decay=args.weight_decay,
-                batch_size=args.batch_size,
-                epochs=args.epochs,
-                outer_folds=outer_folds,
-                inner_folds=inner_folds,
-                seed=args.seed,
-                device_name=args.device,
-                method=method,
-            )
+            target_path = output_path / method / target_name
+            target_path.mkdir(parents=True)
+            status_path = target_path / "estado.json"
+            write_text(status_path, json.dumps({"status": "running"}) + "\n")
+            try:
+                results = train_one_experiment(
+                    data_path=args.data_path,
+                    target_name=target_name,
+                    hidden_dim=args.hidden_dim,
+                    dropout=args.dropout,
+                    learning_rate=args.learning_rate,
+                    weight_decay=args.weight_decay,
+                    batch_size=args.batch_size,
+                    epochs=args.epochs,
+                    outer_folds=outer_folds,
+                    inner_folds=inner_folds,
+                    seed=args.seed,
+                    device_name=args.device,
+                    method=method,
+                    on_outer_fold=lambda fold, classes: save_outer_fold(
+                        fold, classes, target_path / f"fold_{fold['outer_fold']:02d}"
+                    ),
+                )
+                save_target_confusion(results, target_path)
+                write_text(status_path, json.dumps({"status": "complete"}) + "\n")
+            except Exception:
+                error = traceback.format_exc()
+                print(error, file=sys.stderr)
+                write_text(status_path, json.dumps({
+                    "status": "failed", "traceback": error,
+                }, indent=2) + "\n")
+                run_status["failures"].append({"method": method, "target": target_name})
+                write_run_status()
+                continue
             print_experiment_results(results)
             all_results.append(results)
             rows.append(experiment_to_row(results, algorithm=results["algorithm"]))
-            confusion_by_target[f"{method}_{target_name}"] = results["last_fold_confusion"]
 
-    rank_mode = resolve_rank_mode(args.rank_metric, args.rank_mode)
-    print()
-    print(format_ranking_console(rank_rows(rows, "f1_macro", "max"), "f1_macro", "max"))
-    print(format_ranking_console(rank_rows(rows, "mae_ordinal", "min"), "mae_ordinal", "min"))
-    print(
-        format_ranking_console(
-            rank_rows(rows, args.rank_metric, rank_mode),
-            args.rank_metric,
-            rank_mode,
-        )
-    )
-
-    paths = save_experiment_reports(
-        rows,
-        args.output_dir,
-        rank_metric=args.rank_metric,
-        rank_mode=args.rank_mode,
-        confusion_by_target=confusion_by_target,
-    )
-    paths.update(save_fold_details(all_results, args.output_dir))
-    print(f"\nReportes escritos en {args.output_dir}/")
+    try:
+        paths = {}
+        if rows and not run_status["failures"]:
+            rank_mode = resolve_rank_mode(args.rank_metric, args.rank_mode)
+            print()
+            print(format_ranking_console(rank_rows(rows, "f1_macro", "max"), "f1_macro", "max"))
+            print(format_ranking_console(rank_rows(rows, "mae_ordinal", "min"), "mae_ordinal", "min"))
+            print(
+                format_ranking_console(
+                    rank_rows(rows, args.rank_metric, rank_mode),
+                    args.rank_metric,
+                    rank_mode,
+                )
+            )
+            paths.update(save_experiment_reports(
+                rows,
+                output_path,
+                rank_metric=args.rank_metric,
+                rank_mode=args.rank_mode,
+            ))
+        if rows:
+            paths.update(save_fold_details(all_results, output_path))
+    except Exception:
+        error = traceback.format_exc()
+        print(error, file=sys.stderr)
+        run_status["status"] = "failed"
+        run_status["failures"].append({"stage": "reporting", "traceback": error})
+        write_run_status()
+        raise
+    run_status["status"] = "failed" if run_status["failures"] else "complete"
+    run_status["completed_experiments"] = len(rows)
+    write_run_status()
+    print(f"\nReportes escritos en {output_path}/")
     for name, path in paths.items():
         print(f"  {name}: {path}")
+    if run_status["failures"]:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
