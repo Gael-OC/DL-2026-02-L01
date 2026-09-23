@@ -41,15 +41,15 @@ def resolve_rank_mode(metric: str, mode: str) -> str:
 def experiment_to_row(
     results: dict, algorithm: str = DEFAULT_ALGORITHM
 ) -> dict:
-    """Convierte el resultado de un experimento en una fila comparable."""
+    """Convierte el resultado; los HP de esta fila son la base CLI."""
 
     row = {
         "algorithm": algorithm,
         "target": results["target_name"],
-        "hidden_dim": results["config"]["hidden_dim"],
-        "dropout": results["config"]["dropout"],
-        "learning_rate": results["config"]["learning_rate"],
-        "weight_decay": results["config"]["weight_decay"],
+        "base_hidden_dim": results["config"]["hidden_dim"],
+        "base_dropout": results["config"]["dropout"],
+        "base_learning_rate": results["config"]["learning_rate"],
+        "base_weight_decay": results["config"]["weight_decay"],
         "epochs": results["config"]["epochs"],
         "outer_folds": results["config"]["outer_folds"],
         "inner_folds": results["config"]["inner_folds"],
@@ -265,6 +265,7 @@ def save_outer_fold(fold: dict, classes: list, output_dir: str | Path) -> None:
         "outer_fold": fold["outer_fold"],
         "n_test": len(indices),
         "best_config": fold["best_config"],
+        "inner_grid_results": fold.get("inner_grid_results", []),
         "inner_mae_mean": fold["inner_mae_mean"] if np.isfinite(fold["inner_mae_mean"]) else None,
         "inner_qwk_mean": fold["inner_qwk_mean"] if np.isfinite(fold["inner_qwk_mean"]) else None,
         "outer_metrics": fold["outer_metrics"],
@@ -281,7 +282,7 @@ def save_outer_fold(fold: dict, classes: list, output_dir: str | Path) -> None:
         }}
         for index in range(len(classes))
     ], ["real", *[str(label) for label in classes]])
-    plot_confusion_matrix(matrix, f"Fold externo {fold['outer_fold']}", output_path / "confusion.png")
+    plot_confusion_matrix(matrix, f"Fold externo {fold['outer_fold']}", output_path / "confusion.png", classes)
 
 
 def save_target_confusion(results: dict, output_dir: str | Path) -> None:
@@ -301,7 +302,7 @@ def save_target_confusion(results: dict, output_dir: str | Path) -> None:
         }}
         for index in range(len(classes))
     ], ["real", *[str(label) for label in classes]])
-    plot_confusion_matrix(matrix, "Confusion OOF", output_path / "confusion_oof.png")
+    plot_confusion_matrix(matrix, "Confusion OOF", output_path / "confusion_oof.png", classes)
 
 
 def plot_metric_bars(
@@ -373,16 +374,19 @@ def plot_ranking_bars(
 
 
 def plot_confusion_matrix(
-    matrix: np.ndarray, title: str, output_path: Path
+    matrix: np.ndarray, title: str, output_path: Path, class_labels: list | None = None
 ) -> None:
     figure, axis = plt.subplots(figsize=(4.8, 4.2))
     image = axis.imshow(matrix, cmap="Blues")
     figure.colorbar(image, ax=axis, fraction=0.046, pad=0.04)
-    axis.set_xlabel("Predicho")
-    axis.set_ylabel("Real")
+    axis.set_xlabel("Predicho (clase original)" if class_labels is not None else "Predicho (índice)")
+    axis.set_ylabel("Real (clase original)" if class_labels is not None else "Real (índice)")
     axis.set_title(title)
     axis.set_xticks(np.arange(matrix.shape[1]))
     axis.set_yticks(np.arange(matrix.shape[0]))
+    if class_labels is not None:
+        axis.set_xticklabels([str(label) for label in class_labels])
+        axis.set_yticklabels([str(label) for label in class_labels])
     for row_index in range(matrix.shape[0]):
         for col_index in range(matrix.shape[1]):
             axis.text(
@@ -419,10 +423,10 @@ def save_experiment_reports(
     csv_fields = [
         "algorithm",
         "target",
-        "hidden_dim",
-        "dropout",
-        "learning_rate",
-        "weight_decay",
+        "base_hidden_dim",
+        "base_dropout",
+        "base_learning_rate",
+        "base_weight_decay",
         "epochs",
         "outer_folds",
         "inner_folds",

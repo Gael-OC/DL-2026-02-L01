@@ -24,6 +24,10 @@ class H4TraceabilityTests(unittest.TestCase):
             "y_pred": np.array([0, 2]),
             "y_proba": np.array([[0.8, 0.1, 0.1], [0.1, 0.2, 0.7]]),
             "best_config": {"hidden_dim": 32},
+            "inner_grid_results": [{
+                "config": {"hidden_dim": 32}, "mae_scores": [0.2, 0.4],
+                "qwk_scores": [0.7, 0.5], "mae_mean": 0.3, "qwk_mean": 0.6,
+            }],
             "inner_mae_mean": float("nan"),
             "inner_qwk_mean": float("nan"),
             "outer_metrics": {"accuracy": 0.5},
@@ -41,6 +45,7 @@ class H4TraceabilityTests(unittest.TestCase):
             self.assertEqual([int(row["original_index"]) for row in predictions], [0, 2])
             self.assertEqual(sum(int(row[str(label)]) for row in matrix for label in [1, 2, 3]), 2)
             self.assertIsNone(metrics["inner_mae_mean"])
+            self.assertEqual(metrics["inner_grid_results"], fold["inner_grid_results"])
 
     def test_execution_error_is_visible_and_exits_nonzero(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

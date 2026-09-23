@@ -2,8 +2,13 @@
 
 import argparse
 from datetime import datetime
+import hashlib
+from importlib.metadata import PackageNotFoundError, version
 import json
+import os
 from pathlib import Path
+import platform
+import subprocess
 import sys
 import traceback
 from typing import Callable
@@ -739,6 +744,61 @@ def build_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def write_run_manifest(output_path: Path, data_path: str, methods: list[str]) -> None:
+    """Identifica los bytes de código y datos usados por esta corrida."""
+
+    def sha256(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    project_path = Path(__file__).resolve().parent
+    code_paths = [project_path / "main.py", *sorted((project_path / "src").glob("*.py"))]
+    code_hashes = {str(path.relative_to(project_path)): sha256(path) for path in code_paths}
+    code_digest = hashlib.sha256(json.dumps(code_hashes, sort_keys=True).encode()).hexdigest()
+    dataset_path = Path(data_path).resolve()
+    packages = {}
+    for package in ("torch", "numpy", "pandas", "scikit-learn", "pyreadstat", "matplotlib"):
+        try:
+            packages[package] = version(package)
+        except PackageNotFoundError:
+            packages[package] = None
+
+    def git_output(*args: str) -> str | None:
+        result = subprocess.run(
+            ["git", *args], cwd=project_path, capture_output=True, text=True,
+            check=False,
+        )
+        return result.stdout.strip() if result.returncode == 0 else None
+
+    manifest = {
+        "command": [sys.executable, *sys.argv],
+        "method_versions": {method: METHOD_NAMES[method] for method in methods},
+        "code": {
+            "git_head": git_output("rev-parse", "HEAD"),
+            "git_status_short": git_output("status", "--short"),
+            "files_sha256": code_hashes,
+            "combined_sha256": code_digest,
+        },
+        "data": {
+            "path": str(dataset_path),
+            "sha256": sha256(dataset_path) if dataset_path.is_file() else None,
+        },
+        "environment": {
+            "python": sys.version,
+            "platform": platform.platform(),
+            "hostname": platform.node(),
+            "variables": {name: os.environ.get(name) for name in (
+                "OMP_NUM_THREADS", "MPLBACKEND", "CUDA_VISIBLE_DEVICES"
+            )},
+            "packages": packages,
+        },
+    }
+    write_text(output_path / "manifiesto.json", json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
+
+
 def main() -> None:
     """Ejecuta uno o todos los experimentos y escribe reportes."""
 
@@ -748,6 +808,7 @@ def main() -> None:
     if args.output_dir == DEFAULT_OUTPUT_DIR:
         output_path = output_path / f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     output_path.mkdir(parents=True, exist_ok=False)
+    write_run_manifest(output_path, args.data_path, args.methods)
     run_status = {
         "status": "running",
         "command": [sys.executable, *sys.argv],
