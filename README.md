@@ -10,7 +10,7 @@ partir de 15 atributos binarios. `GDS`, `GDS_R1`, …, `GDS_R5` son seis
 experimentos independientes. Los cuatro métodos obligatorios son Softmax
 fijo, Softmax con búsqueda interna, CORAL sin pesos y CORAL con pesos por
 número efectivo. CORN y Softmax con arquitectura equiparada son controles
-adicionales que pasaron la corrida definitiva. Este último entrega argmax y
+adicionales que pasaron la corrida H6. Este último entrega argmax y
 mediana desde las mismas probabilidades: seis entrenamientos y siete filas
 por objetivo.
 
@@ -24,9 +24,11 @@ La mediana de Softmax equiparado reduce levemente MAE en `GDS`, `GDS_R1` y
 
 El archivo del curso `dataset/15 atributos R0-R5.sav` tiene 1119 filas, 15
 entradas binarias y seis objetivos. El SAV no se versiona: para reproducir,
-hay que colocarlo en esa ruta. Las clases originales se ordenan y recodifican
-a índices `0, …, K−1`; las confusiones muestran de nuevo las clases
-originales.
+hay que colocarlo en esa ruta. `ID` existe, es único en estas 1119 filas y
+se excluye de las entradas. Las clases originales se ordenan y recodifican a
+índices `0, …, K−1`. En H6, los CSV de confusión usan clases originales y
+los PNG congelados muestran índices. Para `GDS_R3`, original `1/3` equivale a
+índice `0/1`. Las figuras nuevas rotulan las clases originales en ambos ejes.
 
 | Objetivo | Clases originales: número de casos |
 | --- | --- |
@@ -90,9 +92,17 @@ Python 3.10.21, PyTorch 2.14.0+cu130, NumPy 2.2.6, pandas 2.3.3,
 scikit-learn 1.7.2 y pyreadstat 1.3.6. Hardware y hashes constan en el
 [manifiesto](docs/resultados_h6/MANIFIESTO.md).
 
+H6 conserva la reducción CORN histórica que promedia las medias de umbrales;
+no corresponde a [CORN v2](docs/PROTOCOLO_E1.md). La ejecución nueva guarda
+`manifiesto.json` con comando, versiones, SHA del SAV y hashes de los archivos
+Python efectivamente ejecutados, incluso si el árbol tiene cambios sin commit.
+
 La ejecución produce `estado.json`, `resultados.csv`,
 `configuraciones_folds.csv`, `predicciones_oof.csv`, `verificacion_oof.csv`
-y reportes bajo `<método>/<objetivo>/fold_XX/`. El
+y reportes bajo `<método>/<objetivo>/fold_XX/`. En la nueva versión,
+`metricas.json` por fold conserva todos los candidatos internos y sus
+puntuaciones; los HP elegidos constan en `best_config` por fold. Los campos
+`base_*` de las tablas son parámetros CLI de referencia, no HP elegidos. El
 [CSV versionado](docs/resultados_h6/resultados.csv) y las confusiones son
 copias byte a byte de la corrida validada. Los artefactos por fold y las
 predicciones individuales se reconstruyen con el comando y quedan en
@@ -109,7 +119,7 @@ dropout; difieren en la cabeza, pérdida y decisión:
 | --- | --- | --- |
 | Softmax fijo / HP | `K` logits; entropía cruzada. | Argmax. |
 | CORAL sin/con pesos | `K−1` logits de umbrales ordenados; BCE con logits de etiquetas acumulativas. | Contar umbrales con probabilidad mayor que 0,5. |
-| CORN | `K−1` logits condicionales; BCE por umbral sobre muestras elegibles. | Producto acumulado de condicionales y conteo de umbrales. |
+| CORN H6 / v2 | `K−1` logits condicionales; BCE solo sobre pares elegibles. H6 promedió medias por umbral; v2 divide la suma de BCE por el número total de pares elegibles, según las ecuaciones 5–6 del artículo. | Producto acumulado de condicionales y conteo de umbrales. |
 | Softmax equiparado | `K` logits; entropía cruzada. | Argmax y mediana de la misma distribución. |
 
 La pérdida CORAL promedia la BCE de `K−1` umbrales por muestra. Con pesos,
@@ -118,6 +128,14 @@ pesos a media uno; las ausentes reciben peso cero. Se multiplica la pérdida
 de cada muestra por el peso de su clase. Los conteos provienen solo del
 **train del ajuste**: inner-train durante selección y outer-train durante
 reentrenamiento.
+
+La normalización a media uno es sobre **clases**, no sobre muestras: el peso
+promedio aplicado al train puede ser distinto de uno. En H6 se eligió β=0,9
+en 24/27 folds ponderados; para clases numerosas los pesos resultaron casi
+iguales. En GDS fold 1, los pesos por clase rondaron `[0,420; 0,420; 0,420;
+0,422; 0,472; 0,645; 4,201]`, pero su media ponderada por muestras fue
+aproximadamente 0,433. Ponderar cambia también la escala del término de datos
+frente a `weight_decay`; no demuestra calibración de probabilidades.
 
 **Ejemplo numérico de CORAL.** Con `K=3`, la etiqueta original 2 es índice
 1 y se codifica `[1; 0]`. Los logits `[1,3863; −1,3863]` dan sigmoides
@@ -162,7 +180,9 @@ H6 terminó sin fallos: 42 filas, 189 configuraciones por fold, nueve
 métricas finitas por fila, 1119 índices OOF únicos por combinación y 46 998
 predicciones en total. Las probabilidades son válidas y las 42 matrices
 agregadas coinciden con las predicciones. Argmax y mediana equiparados
-comparten probabilidades y folds. Véanse
+comparten probabilidades y folds. Todas las filas «CORN» de las tablas que
+siguen corresponden a la reducción histórica H6; E1 todavía no tiene
+resultados. Véanse
 [cobertura](docs/resultados_h6/verificacion_oof.csv),
 [configuraciones](docs/resultados_h6/configuraciones_folds.csv) y
 [manifiesto](docs/resultados_h6/MANIFIESTO.md).
@@ -297,8 +317,9 @@ también variaron por objetivo; en `GDS_R3` el baseline siguió competitivo.
 
 Las clases escasas —sobre todo los dos casos `GDS=7`— hacen frágiles las
 conclusiones por clase. Los perfiles con etiquetas contradictorias limitan
-la información de las entradas. Los folds se formaron por fila; no hay
-identificadores de sujeto o grupo para comprobar dependencia entre filas.
+la información de las entradas. Los folds se formaron por fila; `ID` identifica
+cada fila, pero no hay variables de sujeto compartido, centro o tiempo para
+comprobar dependencia entre filas.
 Se usó una sola semilla, sin incertidumbre entre semillas. El SAV no documenta
 el significado de cada indicador. Estas limitaciones afectan la lectura de
 resultados, pero no motivaron cambios en método, grid o dispositivo al ver el
