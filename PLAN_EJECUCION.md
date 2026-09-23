@@ -5,8 +5,13 @@
 > al `README.md` el procedimiento, los comandos, las decisiones y los
 > resultados definitivos.
 
-**Equipo:** Gael y Johan  
+**Equipo:** Gael Ortega y Johan Piñones
+
 **Entrega:** 24/09/2026 a las 23:59
+
+**Calendario desde H4:** 22/09 cerrar el código y probarlo; 23/09 ejecutar
+experimentos definitivos en el servidor, congelar resultados y completar el
+README; 24/09 redactar el informe en Overleaf y efectuar la entrega.
 
 La distribución de tareas permite avanzar en paralelo, reducir conflictos de
 código y reunir el trabajo en puntos de integración acordados.
@@ -24,37 +29,43 @@ La entrega obligatoria debe incluir, como mínimo:
 4. CORAL con pesos por número efectivo de muestras.
 5. Validación anidada, métricas, tablas y trazabilidad del procedimiento.
 
-Para elevar el laboratorio se implementará **CORN** como extensión principal.
-Después de completar lo obligatorio se evaluarán Softmax con arquitectura
-equiparada y la decisión por mediana. No se añadirán más modelos mientras la
-entrega obligatoria no esté cerrada.
+Con el núcleo experimental obligatorio funcionando y tiempo reservado para
+documentar la entrega, el objetivo del 22/09 es integrar **CORN** para la
+corrida del 23/09. Softmax con arquitectura equiparada y la decisión por
+mediana son controles adicionales. Solo entran en el informe si pasan el
+smoke test y la corrida definitiva.
 
 ## 2. Forma de trabajo
 
-- Gael se concentra en validación experimental, flujo común y CORN.
-- Johan se concentra en CORAL, ponderación, salidas y reportes.
-- La asignación de componentes evita ediciones simultáneas.
+- Hasta H4, Gael llevó validación experimental y flujo común; Johan trabajó en
+  CORAL, ponderación y reportes.
+- Desde el 22/09 las tareas pendientes quedan abiertas a cualquiera del
+  equipo. El PR #5 no bloquea el cierre del código ni las corridas.
 - Los cambios llegan a `main` mediante ramas cortas y pull requests.
-- Un cambio se incorpora cuando tiene una comprobación reproducible y ambos
-  conocen su efecto sobre el experimento.
+- Un cambio se incorpora cuando tiene una comprobación reproducible y su
+  efecto sobre el experimento queda documentado.
 - El test externo nunca se usa para escoger configuración, época, método o
   decodificador.
 - Los seis objetivos son experimentos independientes; no son una red con seis
   salidas.
-- El informe se redactará después de congelar los resultados. Durante el
-  desarrollo solo se guardará evidencia breve y verificable.
+- Ahora se deja un esqueleto del `README.md`. Se completa con los resultados
+  definitivos después de congelar las corridas; luego se redacta el informe en
+  Overleaf tomando ese README como base. Durante el desarrollo se guarda
+  evidencia breve y verificable.
 
-## 3. Distribución de tareas
+## 3. Registro de trabajo hasta H4
 
-### Gael — validación experimental, flujo común y CORN
+Las asignaciones siguientes describen el trabajo previo. H5–H9 contienen las
+tareas pendientes sin responsable preasignado.
 
-Archivos asignados para evitar solapamientos:
+### Gael — validación experimental y flujo común hasta H4
+
+Archivos que llevó hasta H4:
 
 - `main.py`
 - `src/config.py`
 - `src/preprocessing.py`
 - `src/evaluation.py`
-- implementación de CORN
 
 Tareas:
 
@@ -64,14 +75,12 @@ Tareas:
 - corregir métricas para conservar la escala completa de clases;
 - implementar la búsqueda interna por menor MAE y desempate por mayor QWK;
 - construir el motor común de entrenamiento y evaluación;
-- definir el contrato que deben cumplir Softmax, CORAL y CORN;
-- conectar al flujo común los métodos que cumplan el contrato compartido;
-- implementar y probar CORN;
-- congelar el protocolo antes de las ejecuciones finales.
+- definir el contrato común de los métodos;
+- conectar al flujo común los cuatro métodos obligatorios.
 
-### Johan — CORAL, ponderación, salidas y reportes
+### Johan — CORAL, ponderación, salidas y reportes hasta H4
 
-Archivos asignados para evitar solapamientos:
+Archivos que llevó hasta H4:
 
 - `src/models.py`
 - `src/losses.py`
@@ -89,16 +98,14 @@ Tareas:
 - comprobar formas, monotonía, pesos y gradientes con ejemplos pequeños;
 - exportar predicciones OOF, configuraciones elegidas, tablas y matrices de
   confusión usando el formato compartido;
-- ejecutar comandos acordados y registrar sus artefactos;
-- implementar Softmax equiparado y decisión por mediana si P0 ya está cerrado.
+- ejecutar comandos acordados y registrar sus artefactos.
 
 ### Regla para cambios fuera del área propia
 
-Si una tarea necesita modificar un archivo asignado a la otra persona, se
-acuerda primero la interfaz. No se hacen cambios paralelos sobre el mismo
-archivo. Quien implementa un método no necesita modificar `main.py`: entrega
-el modelo, la pérdida y el decodificador a través del contrato común. El
-resultado se comprueba en conjunto al integrar el método en el experimento.
+La asignación anterior deja de restringir el trabajo a partir de H5. Se
+conserva la interfaz del contrato común y se evita editar el mismo archivo en
+paralelo. Todo cambio nuevo debe partir del `main` actual y revisarse por
+separado antes de incluirlo.
 
 ## 4. Contrato común de los métodos
 
@@ -132,6 +139,8 @@ Invariantes:
 - Excepción de `GDS` acordada y documentada.
 - Nueve métricas, configuraciones seleccionadas y predicciones OOF.
 - Comandos y resultados reproducibles.
+- Tablas finales accesibles, README completo e informe PDF coherente con el
+  código entregado. H4 solo cierra la parte experimental de P0.
 
 ### P1 — laboratorio sobresaliente
 
@@ -202,11 +211,12 @@ sintéticas sin depender todavía de `main.py`.
 
 #### Johan
 
-- [ ] Implementar pesos por número efectivo y normalizarlos a media uno.
-- [ ] Manejar clases ausentes sin divisiones por cero ni `NaN`.
-- [ ] Aplicar el peso de la clase de cada muestra a la pérdida CORAL.
-- [ ] Comprobar que pesos iguales a uno reproducen la pérdida no ponderada.
-- [ ] Preparar un ejemplo numérico breve de CORAL para documentación posterior.
+- [x] Implementar pesos por número efectivo y normalizarlos a media uno.
+- [x] Manejar clases ausentes sin divisiones por cero ni `NaN`.
+- [x] Aplicar el peso de la clase de cada muestra a la pérdida CORAL.
+- [x] Comprobar que pesos iguales a uno reproducen la pérdida no ponderada.
+- [ ] Preparar un ejemplo numérico breve de CORAL para la documentación final
+      (tarea abierta en H8).
 
 **Cierre:** Softmax HP funciona correctamente y CORAL ponderado pasa sus
 pruebas unitarias.
@@ -262,54 +272,93 @@ exactamente. La lógica numérica de entrenamiento no cambió entre ese `HEAD` y
 H4; los cambios sin commit de H4 afectan la trazabilidad y los reportes. Las
 salidas generadas siguen ignoradas por Git según el plan del equipo.
 
-**Cierre P0:** existe una entrega completa aunque no se alcance ninguna
-extensión.
+**Cierre H4:** la parte experimental obligatoria funciona y tiene trazabilidad.
+P0 todavía requiere resolver el alcance del protocolo, publicar las tablas
+finales, completar el README y preparar el informe PDF.
 
-### H5 — CORN y comparación controlada
+### H5 — cerrar código y protocolo el 22/09
 
-#### Gael
+- [x] Revisar el PR [#5](https://github.com/Gael-OC/DL-2026-02-L01/pull/5):
+      sigue en conflicto y sus cambios útiles de etiquetas 0..K-1 ya están en
+      `main`. Su cabeza y pérdida CORAL son incompatibles con H4.
+- [x] Decidir no integrar el PR #5 en su estado actual.
+- [ ] Dejar una explicación breve en el PR #5 y cerrarlo **sin fusionar** como
+      superado por `main`. El historial del PR queda disponible; su cierre no
+      impide revisar un cambio puntual nuevo desde el código actual.
+- [ ] Fijar antes de la nueva corrida el grid de cuatro configuraciones para
+      CORAL sin pesos, CORN y Softmax equiparado, y las mismas cuatro con β en
+      `{0.9, 0.99, 0.999}` para CORAL con pesos. Mantener 20 épocas y batch 32
+      como protocolo principal del curso; no elegir el grid según el test H4.
+- [ ] Permitir variar `hidden_dim` de CORAL conservando 32 como arquitectura
+      base y conectar CORAL/CORAL+pesos a la búsqueda interna MAE/QWK.
+- [ ] Implementar CORN: `K-1` logits, máscara condicional, pérdida con logits,
+      producto acumulado y predicción; probar lotes sin ejemplos en umbrales
+      superiores e integrarlo al contrato y a los folds compartidos.
+- [ ] Implementar Softmax con bloque oculto equiparado a CORAL y decisión por
+      mediana sobre las mismas probabilidades/checkpoint Softmax.
+- [ ] Hacer un smoke test de una época en `GDS_R2` de cada método nuevo,
+      verificar las salidas y ejecutar las pruebas existentes.
+- [ ] Congelar métodos, grid, semillas y comando de la corrida del 23/09.
 
-- [ ] Implementar `MLPCorn` con `K-1` logits.
-- [ ] Implementar máscara de subtareas condicionales.
-- [ ] Implementar pérdida CORN con logits.
-- [ ] Implementar producto acumulado para probabilidades.
-- [ ] Probar lotes con subtareas superiores vacías.
-- [ ] Integrar CORN al mismo grid y a los mismos folds.
+**Cierre H5:** el código de cada método que se incluirá mañana pasa pruebas y
+un smoke test; no quedan cambios experimentales por decidir durante la corrida.
 
-#### Johan
+### H6 — corridas definitivas el 23/09
 
-- [ ] Implementar Softmax con el bloque oculto equiparado.
-- [ ] Implementar decisión por mediana desde probabilidades Softmax.
-- [ ] Comprobar argmax y mediana sobre el mismo checkpoint.
-- [ ] Extender tablas y gráficos sin mezclar objetivos de distinta dificultad.
+- [ ] Medir un ajuste pequeño en CPU y GPU del servidor y usar el dispositivo
+      más rápido para estas MLP pequeñas.
+- [ ] Ejecutar los métodos cerrados en H5 en los seis objetivos: 5×3 folds en
+      `GDS_R1`–`GDS_R5` y 2×2 en `GDS`, con la agrupación 6/7 solo para
+      estratificar internamente.
+- [ ] Separar salidas por corrida/método/objetivo y registrar comando, commit,
+      entorno, semilla, configuración seleccionada y estado de cada corrida.
+- [ ] Verificar nueve métricas finitas, cuatro filas obligatorias por objetivo,
+      cobertura OOF y confusiones antes de dar una corrida por definitiva.
+- [ ] Comparar Softmax, CORAL y CORN dentro de cada objetivo; separar efecto de
+      arquitectura, cabeza, ponderación y decisión. Si una extensión falla,
+      documentarla como no incluida y conservar la entrega obligatoria.
 
-- [ ] Ejecutar CORN en los seis objetivos.
-- [ ] Comparar Softmax, CORAL y CORN dentro de cada objetivo.
-- [ ] Separar efecto de arquitectura, cabeza, pesos y regla de decisión.
+**Cierre H6:** están disponibles y comprobados los resultados que se usarán
+para README e informe; el cómputo puede seguir desatendido mientras se prepara
+la documentación que no depende de las métricas finales.
 
-**Cierre P1:** las extensiones responden una pregunta experimental clara y no
-son solo modelos agregados.
+### H7 — congelar resultados el 23/09
 
-### H6 — congelar resultados
-
-- [ ] Seleccionar las corridas definitivas antes de redactar conclusiones.
+- [ ] Seleccionar la corrida definitiva de cada método y objetivo y registrar
+      commit, entorno, semilla, comandos y folds usados.
 - [ ] Verificar que tablas, figuras y comandos corresponden al mismo código.
-- [ ] Copiar las tablas y figuras finales a una ubicación versionada.
-- [ ] Registrar limitaciones, resultados favorables y resultados desfavorables.
-- [ ] No abrir nuevas búsquedas después de observar el test externo.
+- [ ] Copiar solo las tablas y figuras finales a una ubicación versionada;
+      `results/` conserva los artefactos locales de corrida y sigue ignorado.
+- [ ] Comparar métodos dentro de cada objetivo; no usar el ranking global para
+      proclamar un ganador entre objetivos de distinta dificultad.
+- [ ] Registrar limitaciones, resultados favorables y desfavorables, incluidos
+      desbalance, patrones ambiguos y la excepción de `GDS`.
+- [ ] No abrir nuevas búsquedas motivadas por los resultados del test externo.
 
 **Cierre:** no cambia el código experimental salvo correcciones justificadas.
 
-### H7 — README, informe y entrega
+### H8 — completar README el 23/09
 
-- [ ] Documentar instalación y entorno en `README.md`.
-- [ ] Documentar dataset, entradas, objetivos y recodificaciones.
-- [ ] Documentar nested CV, grid, seeds y excepción de `GDS`.
-- [ ] Documentar Softmax, CORAL, ponderación y CORN.
-- [ ] Incluir comandos exactos de reproducción.
-- [ ] Incluir resultados, figuras, discusión y limitaciones.
-- [ ] Verificar que el README permite reconstruir el procedimiento completo.
-- [ ] Redactar el informe usando el README y los artefactos congelados.
+- [x] Dejar un esqueleto del `README.md` siguiendo la organización de los
+      laboratorios anteriores, sin inventar resultados finales.
+- [ ] Documentar instalación, dataset, seis objetivos y estructura real.
+- [ ] Documentar métodos, nested CV, grid efectivo, seeds y excepción de
+      `GDS`; CORN aparece solo si H6 se completó.
+- [ ] Incorporar comandos, tablas y figuras definitivas desde H7.
+- [ ] Interpretar métricas, errores por clase y limitaciones dentro de cada
+      objetivo, y redactar las conclusiones.
+- [ ] Incorporar el ejemplo numérico breve de CORAL y revisar que la
+      explicación de CORAL y pesos coincida con el código.
+- [ ] Comprobar que el README permite reconstruir el procedimiento completo.
+
+**Cierre H8:** el README es la fuente consolidada para redactar el informe.
+
+### H9 — informe en Overleaf y entrega el 24/09
+
+- [ ] Redactar el informe en Overleaf a partir del README final y los
+      artefactos congelados. Esta tarea no incluye generar el informe ahora.
+- [ ] Revisar resultados, método y explicación de CORAL en el borrador; una
+      segunda lectura es bienvenida si está disponible.
 - [ ] Verificar coherencia entre código, README, PDF y ZIP.
 - [ ] Confirmar acceso al repositorio para profesor/ayudantes.
 - [ ] Registrar la entrega en Campus Virtual.
