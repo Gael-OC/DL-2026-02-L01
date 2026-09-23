@@ -16,7 +16,7 @@ METHOD_NAMES = {
     "softmax_hp": "Softmax HP",
     "coral": "CORAL sin pesos",
     "coral_weighted": "CORAL con pesos",
-    "corn": "CORN",
+    "corn": "CORN v2 (pares elegibles)",
     "softmax_matched": "Softmax equiparado (argmax)",
     "softmax_matched_median": "Softmax equiparado (mediana)",
 }

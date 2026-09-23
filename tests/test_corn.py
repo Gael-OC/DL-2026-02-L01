@@ -15,14 +15,37 @@ class CornTests(unittest.TestCase):
         logits = torch.tensor([[0.2, 1.0, -2.0], [-0.4, 0.7, 3.0]], requires_grad=True)
         labels = torch.tensor([0, 1])
         actual = corn_loss(logits, labels)
-        expected = (
-            F.binary_cross_entropy_with_logits(logits[:, 0], torch.tensor([0.0, 1.0]))
-            + F.binary_cross_entropy_with_logits(logits[1:2, 1], torch.tensor([0.0]))
-        ) / 2
+        # Tres pares elegibles: softplus(0.2), softplus(0.4), softplus(0.7).
+        expected = (F.softplus(torch.tensor(0.2)) + F.softplus(torch.tensor(0.4))
+                    + F.softplus(torch.tensor(0.7))) / 3
+        self.assertAlmostEqual(actual.item(), 0.93811339, places=6)
         torch.testing.assert_close(actual, expected)
         actual.backward()
         self.assertTrue(torch.isfinite(logits.grad).all())
+        torch.testing.assert_close(
+            logits.grad[0, 0], torch.sigmoid(torch.tensor(0.2)) / 3
+        )
+        torch.testing.assert_close(
+            logits.grad[1, 0], (torch.sigmoid(torch.tensor(-0.4)) - 1) / 3
+        )
+        torch.testing.assert_close(
+            logits.grad[1, 1], torch.sigmoid(torch.tensor(0.7)) / 3
+        )
+        torch.testing.assert_close(logits.grad[0, 1], torch.tensor(0.0))
         torch.testing.assert_close(logits.grad[:, 2], torch.zeros(2))
+
+    def test_binary_corn_equals_bce(self) -> None:
+        logits = torch.tensor([[-1.2], [0.3], [2.1]], requires_grad=True)
+        labels = torch.tensor([0, 1, 1])
+        actual = corn_loss(logits, labels)
+        expected = F.binary_cross_entropy_with_logits(
+            logits[:, 0], labels.to(logits.dtype)
+        )
+        torch.testing.assert_close(actual, expected)
+        actual.backward()
+        torch.testing.assert_close(
+            logits.grad[:, 0], (torch.sigmoid(logits.detach()[:, 0]) - labels) / 3
+        )
 
     def test_product_probabilities_and_model_contract(self) -> None:
         model = build_model("corn", {"hidden_dim": 64, "dropout": 0.15}, 15, 3)

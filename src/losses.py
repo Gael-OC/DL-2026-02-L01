@@ -31,19 +31,20 @@ def coral_loss(
 
 
 def corn_loss(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
-    """BCE condicional por umbral; ignora umbrales sin muestras elegibles."""
+    """BCE condicional sumada y dividida por todos los pares elegibles."""
 
     total = logits.sum() * 0.0
-    active = 0
+    eligible_pairs = 0
     for threshold in range(logits.shape[1]):
         eligible = labels >= threshold
         if eligible.any():
             total = total + F.binary_cross_entropy_with_logits(
                 logits[eligible, threshold],
                 (labels[eligible] > threshold).to(logits.dtype),
+                reduction="sum",
             )
-            active += 1
-    return total / active
+            eligible_pairs += int(eligible.sum())
+    return total / eligible_pairs if eligible_pairs else total
 
 
 def effective_number_weights(
