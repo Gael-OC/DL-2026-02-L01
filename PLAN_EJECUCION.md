@@ -215,8 +215,8 @@ sintéticas sin depender todavía de `main.py`.
 - [x] Manejar clases ausentes sin divisiones por cero ni `NaN`.
 - [x] Aplicar el peso de la clase de cada muestra a la pérdida CORAL.
 - [x] Comprobar que pesos iguales a uno reproducen la pérdida no ponderada.
-- [ ] Preparar un ejemplo numérico breve de CORAL para la documentación final
-      (tarea abierta en H8).
+- [x] Preparar un ejemplo numérico breve de CORAL para la documentación final
+      (resuelto en `README.md` durante H8).
 
 **Cierre:** Softmax HP funciona correctamente y CORAL ponderado pasa sus
 pruebas unitarias.
@@ -348,18 +348,30 @@ un smoke test; no quedan cambios experimentales por decidir durante la corrida.
 
 ### H6 — corridas definitivas el 23/09
 
-- [ ] Medir un ajuste pequeño en CPU y GPU del servidor y usar el dispositivo
+- [x] Medir un ajuste pequeño en CPU y GPU del servidor y usar el dispositivo
       más rápido para estas MLP pequeñas.
-- [ ] Ejecutar los métodos cerrados en H5 en los seis objetivos: 5×3 folds en
+- [x] Ejecutar los métodos cerrados en H5 en los seis objetivos: 5×3 folds en
       `GDS_R1`–`GDS_R5` y 2×2 en `GDS`, con la agrupación 6/7 solo para
       estratificar internamente.
-- [ ] Separar salidas por corrida/método/objetivo y registrar comando, commit,
+- [x] Separar salidas por corrida/método/objetivo y registrar comando, commit,
       entorno, semilla, configuración seleccionada y estado de cada corrida.
-- [ ] Verificar nueve métricas finitas, cuatro filas obligatorias por objetivo,
+- [x] Verificar nueve métricas finitas, cuatro filas obligatorias por objetivo,
       cobertura OOF y confusiones antes de dar una corrida por definitiva.
-- [ ] Comparar Softmax, CORAL y CORN dentro de cada objetivo; separar efecto de
+- [x] Comparar Softmax, CORAL y CORN dentro de cada objetivo; separar efecto de
       arquitectura, cabeza, ponderación y decisión. Si una extensión falla,
       documentarla como no incluida y conservar la entrega obligatoria.
+
+**Evidencia H6 (ejecución efectiva 22/09/2026):** el servidor `enterprise`
+pasó las 29 pruebas. En un ajuste de 20 épocas de `GDS_R2`, la mediana de tres
+mediciones fue 0,223 s en CPU y 0,428 s en CUDA; se usó CPU con
+`OMP_NUM_THREADS=1`. El comando fijado arriba terminó en
+`results/h6_20260923_seed42` con estado `complete`, sin fallos, desde el código
+`4d0b6e5`. La carpeta se había nombrado para el 23/09 en H5 y conserva ese
+nombre aunque la ejecución terminó el 22/09 a las 22:59 -03. Se comprobaron
+42 filas, 189 configuraciones por fold, nueve métricas y desviaciones finitas
+por fila, 1119 índices OOF únicos en cada combinación, probabilidades válidas
+y 42 matrices OOF concordantes. El comando efectivo, entorno, dispositivo,
+comparaciones y limitaciones constan en `docs/resultados_h6/MANIFIESTO.md`.
 
 **Cierre H6:** están disponibles y comprobados los resultados que se usarán
 para README e informe; el cómputo puede seguir desatendido mientras se prepara
@@ -367,16 +379,21 @@ la documentación que no depende de las métricas finales.
 
 ### H7 — congelar resultados el 23/09
 
-- [ ] Seleccionar la corrida definitiva de cada método y objetivo y registrar
+- [x] Seleccionar la corrida definitiva de cada método y objetivo y registrar
       commit, entorno, semilla, comandos y folds usados.
-- [ ] Verificar que tablas, figuras y comandos corresponden al mismo código.
-- [ ] Copiar solo las tablas y figuras finales a una ubicación versionada;
+- [x] Verificar que tablas, figuras y comandos corresponden al mismo código.
+- [x] Copiar solo las tablas y figuras finales a una ubicación versionada;
       `results/` conserva los artefactos locales de corrida y sigue ignorado.
-- [ ] Comparar métodos dentro de cada objetivo; no usar el ranking global para
+- [x] Comparar métodos dentro de cada objetivo; no usar el ranking global para
       proclamar un ganador entre objetivos de distinta dificultad.
-- [ ] Registrar limitaciones, resultados favorables y desfavorables, incluidos
+- [x] Registrar limitaciones, resultados favorables y desfavorables, incluidos
       desbalance, patrones ambiguos y la excepción de `GDS`.
-- [ ] No abrir nuevas búsquedas motivadas por los resultados del test externo.
+- [x] No abrir nuevas búsquedas motivadas por los resultados del test externo.
+
+**Evidencia H7:** `docs/resultados_h6/` conserva las cuatro tablas resumen,
+las 42 matrices OOF agregadas como CSV y sus 42 PNG, más un manifiesto. La
+copia se comparó byte a byte con H6. Los archivos de fold y las predicciones
+individuales permanecen solo en `results/`.
 
 **Cierre:** no cambia el código experimental salvo correcciones justificadas.
 
@@ -384,15 +401,22 @@ la documentación que no depende de las métricas finales.
 
 - [x] Dejar un esqueleto del `README.md` siguiendo la organización de los
       laboratorios anteriores, sin inventar resultados finales.
-- [ ] Documentar instalación, dataset, seis objetivos y estructura real.
-- [ ] Documentar métodos, nested CV, grid efectivo, seeds y excepción de
+- [x] Documentar instalación, dataset, seis objetivos y estructura real.
+- [x] Documentar métodos, nested CV, grid efectivo, seeds y excepción de
       `GDS`; CORN aparece solo si H6 se completó.
-- [ ] Incorporar comandos, tablas y figuras definitivas desde H7.
-- [ ] Interpretar métricas, errores por clase y limitaciones dentro de cada
+- [x] Incorporar comandos, tablas y figuras definitivas desde H7.
+- [x] Interpretar métricas, errores por clase y limitaciones dentro de cada
       objetivo, y redactar las conclusiones.
-- [ ] Incorporar el ejemplo numérico breve de CORAL y revisar que la
+- [x] Incorporar el ejemplo numérico breve de CORAL y revisar que la
       explicación de CORAL y pesos coincida con el código.
-- [ ] Comprobar que el README permite reconstruir el procedimiento completo.
+- [x] Comprobar que el README permite reconstruir el procedimiento completo.
+
+**Evidencia H8:** `README.md` incluye el comando definitivo, entorno,
+dataset, seis tablas de nueve métricas (media ± desviación), figuras OOF,
+interpretación por objetivo, grid, folds, seeds, ejemplo CORAL y limitaciones.
+Los valores se generaron desde `docs/resultados_h6/resultados.csv`; se
+comprobaron once enlaces locales, seis tablas y ausencia de marcadores
+pendientes. H9 sigue reservado para el informe en Overleaf.
 
 **Cierre H8:** el README es la fuente consolidada para redactar el informe.
 
