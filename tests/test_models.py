@@ -52,7 +52,9 @@ class ModelsTest(unittest.TestCase):
         print("\ny_hat:\n", y_hat.tolist())
         print("\ncoral_loss:", loss)
 
-        self.assertTrue(1)
+        self.assertEqual(logits.shape, (self.batch_size, self.classes_out - 1))
+        self.assertEqual(y_hat.shape, (self.batch_size,))
+        self.assertTrue(torch.isfinite(loss).item())
 
     def test_forward_layer(self):
         biases = torch.tensor([k for k in range(2)]).float()
