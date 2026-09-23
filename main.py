@@ -34,6 +34,7 @@ from config import (  # noqa: E402
     DEFAULT_RANK_MODE,
     DEFAULT_TARGET,
     DEFAULT_WEIGHT_DECAY,
+    CORAL_BETAS,
     HYPERPARAMETER_GRID,
     TARGET_COLUMNS,
 )
@@ -259,6 +260,10 @@ def run_training_cycle(
         method=method,
     )
 
+    median_pred = None
+    if method == "softmax_matched":
+        median_pred = (np.cumsum(y_proba, axis=1) < 0.5).sum(axis=1)
+
     return {
         "model": model,
         "train_losses": history,
@@ -266,6 +271,7 @@ def run_training_cycle(
         "y_true": y_true,
         "y_pred": y_pred,
         "y_proba": y_proba,
+        "median_pred": median_pred,
         "final_train_loss": history[-1],
     }
 
@@ -340,13 +346,17 @@ def train_one_experiment(
         selected_inner_result = None
         # No usar el fold externo de prueba para elegir hiperparametros.
         # No reportar el mejor fold interno como resultado final.
-        if method == "softmax_hp":
+        search_grid = (
+            [{**config, "beta": beta} for config in HYPERPARAMETER_GRID for beta in CORAL_BETAS]
+            if method == "coral_weighted" else HYPERPARAMETER_GRID
+        )
+        if method != "softmax_fixed":
             inner_stratification_labels = labels_for_inner_stratification(
                 y_outer_train,
                 target_name=target_name,
                 class_to_idx=artifacts["class_to_idx"],
             )
-        if method == "softmax_hp" and can_make_stratified_splits(
+        if method != "softmax_fixed" and can_make_stratified_splits(
             inner_stratification_labels, inner_folds
         ):
             inner_splits = split_for_validation(
@@ -354,7 +364,7 @@ def train_one_experiment(
                 n_splits=inner_folds,
                 random_state=seed + outer_fold_index,
             )
-            for candidate_config in HYPERPARAMETER_GRID:
+            for candidate_config in search_grid:
                 candidate_mae_scores = []
                 candidate_qwk_scores = []
                 for inner_fold_index, (inner_train_idx, inner_val_idx) in enumerate(
@@ -375,6 +385,7 @@ def train_one_experiment(
                         seed=seed + outer_fold_index * 100 + inner_fold_index,
                         device=device,
                         method=method,
+                        beta=candidate_config.get("beta", 0.99),
                     )
                     candidate_mae_scores.append(
                         inner_result["metrics"]["mae_ordinal"]
@@ -394,7 +405,7 @@ def train_one_experiment(
             selected_inner_result = select_best_inner_result(inner_grid_results)
             inner_mae_scores = selected_inner_result["mae_scores"]
             inner_qwk_scores = selected_inner_result["qwk_scores"]
-        elif method == "softmax_hp":
+        elif method != "softmax_fixed":
             print(
                 f"Aviso: el fold externo {outer_fold_index} de {target_name} "
                 f"no admite {inner_folds} folds internos estratificados "
@@ -411,9 +422,7 @@ def train_one_experiment(
                 "weight_decay": weight_decay,
             }
         )
-        if method in ("coral", "coral_weighted"):
-            final_config = {**final_config, "hidden_dim": 32}
-        if method == "coral_weighted":
+        if method == "coral_weighted" and "beta" not in final_config:
             final_config = {**final_config, "beta": 0.99}
         final_result = run_training_cycle(
             X_train=X_outer_train,
@@ -459,6 +468,7 @@ def train_one_experiment(
                 "y_true": final_result["y_true"],
                 "y_pred": final_result["y_pred"],
                 "y_proba": final_result.get("y_proba"),
+                "median_pred": final_result.get("median_pred"),
                 "final_train_loss": final_result["final_train_loss"],
             }
         )
@@ -482,7 +492,7 @@ def train_one_experiment(
         "y_shape": artifacts["y_shape"],
         "device": str(device),
         "config": {
-            "hidden_dim": 32 if method in ("coral", "coral_weighted") else hidden_dim,
+            "hidden_dim": hidden_dim,
             "dropout": dropout,
             "learning_rate": learning_rate,
             "weight_decay": weight_decay,
@@ -506,6 +516,38 @@ def train_one_experiment(
         ),
         "algorithm": METHOD_NAMES[method],
         "method": method,
+    }
+
+
+def matched_median_result(results: dict) -> dict:
+    """Construye la segunda decision usando probabilidades del mismo ajuste."""
+
+    folds = []
+    for fold in results["outer_folds"]:
+        median_fold = dict(fold)
+        median_fold["y_pred"] = fold["median_pred"]
+        median_fold["outer_metrics"] = compute_all_metrics(
+            fold["y_true"], fold["median_pred"], num_classes=len(results["classes"])
+        )
+        folds.append(median_fold)
+    summary = {}
+    for metric_name in METRIC_KEYS:
+        values = np.asarray([fold["outer_metrics"][metric_name] for fold in folds])
+        summary[f"mean_{metric_name}"] = float(values.mean())
+        summary[f"std_{metric_name}"] = float(values.std())
+    last = folds[-1]
+    return {
+        **results,
+        "outer_folds": folds,
+        "summary": summary,
+        "last_fold_report": format_classification_report(
+            last["y_true"], last["y_pred"], class_names=results["classes"]
+        ),
+        "last_fold_confusion": compute_confusion_matrix(
+            last["y_true"], last["y_pred"], num_classes=len(results["classes"])
+        ),
+        "algorithm": METHOD_NAMES["softmax_matched_median"],
+        "method": "softmax_matched_median",
     }
 
 
@@ -577,12 +619,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
     """Define los argumentos de linea de comandos para el experimento base."""
 
     parser = argparse.ArgumentParser(
-        description=(
-            "Comparacion Softmax y CORAL con folds externos compartidos."
-        )
+        description="Comparacion de metodos con folds externos compartidos."
     )
     parser.add_argument(
-        "--methods", nargs="+", choices=METHODS, default=list(METHODS),
+        "--methods", nargs="+", choices=METHODS,
+        default=["softmax_fixed", "softmax_hp", "coral", "coral_weighted"],
         help="Metodos a comparar; por defecto, los cuatro obligatorios.",
     )
     parser.add_argument(
@@ -772,6 +813,20 @@ def main() -> None:
                 )
                 save_target_confusion(results, target_path)
                 write_text(status_path, json.dumps({"status": "complete"}) + "\n")
+                if method == "softmax_matched":
+                    median_results = matched_median_result(results)
+                    median_path = output_path / "softmax_matched_median" / target_name
+                    median_path.mkdir(parents=True)
+                    for fold in median_results["outer_folds"]:
+                        save_outer_fold(
+                            fold, median_results["classes"],
+                            median_path / f"fold_{fold['outer_fold']:02d}",
+                        )
+                    save_target_confusion(median_results, median_path)
+                    write_text(
+                        median_path / "estado.json",
+                        json.dumps({"status": "complete", "source": "softmax_matched"}) + "\n",
+                    )
             except Exception:
                 error = traceback.format_exc()
                 print(error, file=sys.stderr)
@@ -784,6 +839,12 @@ def main() -> None:
             print_experiment_results(results)
             all_results.append(results)
             rows.append(experiment_to_row(results, algorithm=results["algorithm"]))
+            if method == "softmax_matched":
+                print_experiment_results(median_results)
+                all_results.append(median_results)
+                rows.append(experiment_to_row(
+                    median_results, algorithm=median_results["algorithm"]
+                ))
 
     try:
         paths = {}

@@ -6,7 +6,7 @@ from unittest.mock import patch
 import numpy as np
 
 import main
-from src.config import HYPERPARAMETER_GRID
+from src.config import CORAL_BETAS, HYPERPARAMETER_GRID
 from src.evaluation import compute_all_metrics
 
 
@@ -35,6 +35,49 @@ class HyperparameterSearchTests(unittest.TestCase):
         selected = main.select_best_inner_result(candidates)
 
         self.assertEqual(selected["name"], "winner")
+
+    @patch("main.run_training_cycle")
+    @patch("main.build_project_objects")
+    def test_weighted_coral_searches_beta_and_refits_outer_train(
+        self, build_project_objects_mock, run_training_cycle_mock,
+    ) -> None:
+        X = np.arange(12 * 15, dtype=np.float32).reshape(12, 15)
+        y = np.tile(np.arange(3), 4)
+        build_project_objects_mock.return_value = {
+            "X": X, "y": y, "classes": [1, 2, 3],
+            "class_to_idx": {1: 0, 2: 1, 3: 2},
+            "X_shape": X.shape, "y_shape": y.shape,
+        }
+
+        def score(**kwargs):
+            metrics = compute_all_metrics(kwargs["y_eval"], kwargs["y_eval"], 3)
+            high_width = kwargs["hidden_dim"] == 64
+            metrics["mae_ordinal"] = 0.1 if high_width and kwargs["beta"] >= 0.99 else 1.0
+            metrics["qwk"] = 0.7 if kwargs["beta"] == 0.999 else 0.5
+            return {
+                "metrics": metrics, "y_true": kwargs["y_eval"],
+                "y_pred": kwargs["y_eval"], "final_train_loss": 0.0,
+            }
+
+        run_training_cycle_mock.side_effect = score
+        result = main.train_one_experiment(
+            "unused.sav", method="coral_weighted", outer_folds=2,
+            inner_folds=2, epochs=1,
+        )
+        splits = main.split_for_validation(y, n_splits=2, random_state=42)
+        calls_per_outer = len(HYPERPARAMETER_GRID) * len(CORAL_BETAS) * 2 + 1
+        for outer_index, (fold, (train_idx, test_idx)) in enumerate(
+            zip(result["outer_folds"], splits)
+        ):
+            self.assertEqual(len(fold["inner_grid_results"]), 12)
+            self.assertEqual(fold["best_config"]["hidden_dim"], 64)
+            self.assertEqual(fold["best_config"]["beta"], 0.999)
+            final = run_training_cycle_mock.call_args_list[
+                (outer_index + 1) * calls_per_outer - 1
+            ].kwargs
+            np.testing.assert_array_equal(final["y_train"], y[train_idx])
+            np.testing.assert_array_equal(final["y_eval"], y[test_idx])
+            self.assertEqual(final["beta"], 0.999)
 
     @patch("main.run_training_cycle", side_effect=fake_training_cycle)
     @patch("main.build_project_objects")

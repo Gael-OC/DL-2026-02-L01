@@ -285,20 +285,63 @@ finales, completar el README y preparar el informe PDF.
 - [ ] Dejar una explicación breve en el PR #5 y cerrarlo **sin fusionar** como
       superado por `main`. El historial del PR queda disponible; su cierre no
       impide revisar un cambio puntual nuevo desde el código actual.
-- [ ] Fijar antes de la nueva corrida el grid de cuatro configuraciones para
+- [x] Fijar antes de la nueva corrida el grid de cuatro configuraciones para
       CORAL sin pesos, CORN y Softmax equiparado, y las mismas cuatro con β en
       `{0.9, 0.99, 0.999}` para CORAL con pesos. Mantener 20 épocas y batch 32
       como protocolo principal del curso; no elegir el grid según el test H4.
-- [ ] Permitir variar `hidden_dim` de CORAL conservando 32 como arquitectura
+- [x] Permitir variar `hidden_dim` de CORAL conservando 32 como arquitectura
       base y conectar CORAL/CORAL+pesos a la búsqueda interna MAE/QWK.
-- [ ] Implementar CORN: `K-1` logits, máscara condicional, pérdida con logits,
+- [x] Implementar CORN: `K-1` logits, máscara condicional, pérdida con logits,
       producto acumulado y predicción; probar lotes sin ejemplos en umbrales
       superiores e integrarlo al contrato y a los folds compartidos.
-- [ ] Implementar Softmax con bloque oculto equiparado a CORAL y decisión por
+- [x] Implementar Softmax con bloque oculto equiparado a CORAL y decisión por
       mediana sobre las mismas probabilidades/checkpoint Softmax.
-- [ ] Hacer un smoke test de una época en `GDS_R2` de cada método nuevo,
+- [x] Hacer un smoke test de una época en `GDS_R2` de cada método nuevo,
       verificar las salidas y ejecutar las pruebas existentes.
-- [ ] Congelar métodos, grid, semillas y comando de la corrida del 23/09.
+- [x] Congelar métodos, grid, semillas y comando de la corrida del 23/09.
+
+**Protocolo H5 fijado el 22/09/2026 (código validado localmente; commit a cargo
+del estudiante):** seis entrenamientos por objetivo: `softmax_fixed`,
+`softmax_hp`, `coral`, `coral_weighted`, `corn` y `softmax_matched`. El último
+produce dos filas, argmax y mediana, desde las mismas probabilidades y el mismo
+ajuste; son siete filas de resultados por objetivo. Softmax fijo conserva la
+configuración base. Softmax HP, CORAL sin pesos, CORN y Softmax equiparado
+buscan las cuatro configuraciones de `HYPERPARAMETER_GRID`, en el orden
+existente: (32, 0.15, 0.001, 0.0001), (64, 0.15, 0.001, 0.0001),
+(32, 0.30, 0.001, 0.0001), (32, 0.15, 0.0005, 0.0001), en orden
+`hidden_dim`, `dropout`, `learning_rate`, `weight_decay`. CORAL con pesos cruza
+cada una con β=0.9, 0.99 y 0.999 (12 candidatos). Los pesos se calculan solo
+con el train del ajuste correspondiente: inner-train durante selección y
+outer-train durante reentrenamiento. Todos seleccionan menor MAE interno y,
+en empate, mayor QWK interno. La mediana usa el checkpoint elegido por argmax;
+no tiene búsqueda ni entrenamiento aparte.
+
+**Folds y semillas:** seed 42, batch 32, 20 épocas. `GDS_R1`–`GDS_R5` usan
+5 folds externos y 3 internos; `GDS` usa 2 y 2, agrupando las clases 6/7
+solo para estratificar internamente. La semilla de partición externa es 42;
+la interna es `42 + outer_fold`; la de entrenamiento interno es
+`42 + 100*outer_fold + inner_fold`; la del reentrenamiento es
+`42 + 1000*outer_fold` (folds numerados desde 1).
+
+**Comando de la corrida definitiva del 23/09**, desde el repositorio con
+`lab_pytorch` activo, tras confirmar que CPU es el dispositivo más rápido en
+la medición de H6. Si gana GPU, cambiar solo `--device cuda` y registrar el
+comando efectivo en `estado.json`:
+
+```bash
+OMP_NUM_THREADS=1 python main.py --data-path 'dataset/15 atributos R0-R5.sav' --all-targets --methods softmax_fixed softmax_hp coral coral_weighted corn softmax_matched --outer-folds 5 --inner-folds 3 --gds-outer-folds 2 --gds-inner-folds 2 --epochs 20 --batch-size 32 --seed 42 --device cpu --output-dir results/h6_20260923_seed42
+```
+
+**Evidencia H5:** `python -m unittest discover -s tests -q` pasó 29 pruebas
+en `lab_pytorch`. El smoke de una época en `GDS_R2`, con los seis métodos
+anteriores, `--outer-folds 2 --inner-folds 2 --epochs 1 --batch-size 32
+--seed 42 --device cpu --output-dir results/h5_gds_r2_smoke_v2`, terminó con
+`estado.json` completo, siete filas, 14 configuraciones por fold y 1119
+índices OOF únicos para cada fila. Argmax y mediana tienen probabilidades OOF
+idénticas; sus decisiones difieren en 356 ejemplos. La primera carpeta local
+`results/h5_gds_r2_smoke` quedó superada por una corrección de la mediana;
+usar solo `_v2` como evidencia. Son verificaciones de funcionamiento, no
+resultados definitivos.
 
 **Cierre H5:** el código de cada método que se incluirá mañana pasa pruebas y
 un smoke test; no quedan cambios experimentales por decidir durante la corrida.

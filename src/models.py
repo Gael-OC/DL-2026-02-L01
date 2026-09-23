@@ -59,33 +59,21 @@ class CoralLayer(nn.Module):
         return self.score(inputs) + ordered_biases
 
 
-class MLPCoral(nn.Module):
-    """
-    MLP ordinal poco profunda con cabeza CORAL.
-
-    Arquitectura sugerida:
-    15 features -> Linear(32) -> ReLU -> BatchNorm1d -> Dropout
-       -> Linear(16) -> ReLU
-       -> CoralLayer(16, K)
-
-    El forward debe devolver logits de forma (batch_size, K-1).
-    """
-
+class _OrdinalFeatures(nn.Module):
+    """Bloque oculto compartido por las arquitecturas equiparadas."""
     def __init__(
         self,
         num_features: int,
         num_classes: int,
         dropout: float = 0.15,
+        hidden_dim: int = 32,
     ) -> None:
         super().__init__()
-        self.num_features = num_features
-        self.num_classes = num_classes
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(dropout)
-        self.bn1d = nn.BatchNorm1d(32)
-        self.fc1 = nn.Linear(num_features, 32)
-        self.fc2 = nn.Linear(32, 16)
-        self.CLayer = CoralLayer(16, num_classes)
+        self.bn1d = nn.BatchNorm1d(hidden_dim)
+        self.fc1 = nn.Linear(num_features, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, 16)
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         hidden = self.fc1(inputs)
@@ -94,5 +82,46 @@ class MLPCoral(nn.Module):
         hidden = self.dropout(hidden)
         hidden = self.fc2(hidden)
         hidden = self.relu(hidden)
-        logits = self.CLayer(hidden)
-        return logits
+        return hidden
+
+
+class MLPCoral(_OrdinalFeatures):
+    """Bloque oculto de dos capas y cabeza CORAL de K-1 logits."""
+
+    def __init__(
+        self, num_features: int, num_classes: int,
+        dropout: float = 0.15, hidden_dim: int = 32,
+    ) -> None:
+        super().__init__(num_features, num_classes, dropout, hidden_dim)
+        self.CLayer = CoralLayer(16, num_classes)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        return self.CLayer(super().forward(inputs))
+
+
+class MLPCorn(_OrdinalFeatures):
+    """Bloque oculto equiparado con K-1 logits condicionales independientes."""
+
+    def __init__(
+        self, num_features: int, num_classes: int,
+        dropout: float = 0.15, hidden_dim: int = 32,
+    ) -> None:
+        super().__init__(num_features, num_classes, dropout, hidden_dim)
+        self.output = nn.Linear(16, num_classes - 1)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        return self.output(super().forward(inputs))
+
+
+class MLPMatchedSoftmax(_OrdinalFeatures):
+    """Bloque oculto de CORAL con salida Softmax de K logits."""
+
+    def __init__(
+        self, num_features: int, num_classes: int,
+        dropout: float = 0.15, hidden_dim: int = 32,
+    ) -> None:
+        super().__init__(num_features, num_classes, dropout, hidden_dim)
+        self.output = nn.Linear(16, num_classes)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        return self.output(super().forward(inputs))

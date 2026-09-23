@@ -10,13 +10,14 @@ import numpy as np
 import torch
 
 import main
+from src.config import CORAL_BETAS, HYPERPARAMETER_GRID
 from src.losses import effective_number_weights
 from src.methods import METHODS
 from src.reporting import save_fold_details
 
 
 class H3IntegrationTests(unittest.TestCase):
-    def test_four_methods_share_outer_folds_and_export_complete_oof(self) -> None:
+    def test_methods_share_outer_folds_and_export_complete_oof(self) -> None:
         torch.set_num_threads(1)
         X = np.arange(12 * 15, dtype=np.float32).reshape(12, 15) / 100
         y = np.tile(np.arange(3), 4)
@@ -37,9 +38,22 @@ class H3IntegrationTests(unittest.TestCase):
             ]
 
         outer_splits = main.split_for_validation(y, n_splits=2, random_state=42)
-        self.assertEqual(len(weights_mock.call_args_list), 2)
-        for call, (train_indices, _) in zip(weights_mock.call_args_list, outer_splits):
-            np.testing.assert_array_equal(call.args[0], y[train_indices])
+        calls_per_outer = len(HYPERPARAMETER_GRID) * len(CORAL_BETAS) * 2 + 1
+        self.assertEqual(len(weights_mock.call_args_list), calls_per_outer * 2)
+        for outer_index, (train_indices, _) in enumerate(outer_splits):
+            outer_train_y = y[train_indices]
+            calls = weights_mock.call_args_list[
+                outer_index * calls_per_outer:(outer_index + 1) * calls_per_outer
+            ]
+            inner_splits = main.split_for_validation(
+                outer_train_y, n_splits=2, random_state=42 + outer_index + 1
+            )
+            expected = [outer_train_y[inner_train]
+                        for _ in range(len(HYPERPARAMETER_GRID) * len(CORAL_BETAS))
+                        for inner_train, _ in inner_splits]
+            for call, train_y in zip(calls[:-1], expected):
+                np.testing.assert_array_equal(call.args[0], train_y)
+            np.testing.assert_array_equal(calls[-1].args[0], outer_train_y)
 
         with tempfile.TemporaryDirectory() as directory:
             paths = save_fold_details(results, directory)
@@ -50,10 +64,10 @@ class H3IntegrationTests(unittest.TestCase):
             with paths["verificacion_oof"].open(newline="") as handle:
                 coverage = list(csv.DictReader(handle))
 
-        self.assertEqual(len(configs), 4 * 2)
+        self.assertEqual(len(configs), len(METHODS) * 2)
         self.assertTrue(all(row["class_labels"] == "[1, 2, 3]" for row in configs))
-        self.assertEqual(len(oof), 4 * len(y))
-        self.assertEqual(len(coverage), 4)
+        self.assertEqual(len(oof), len(METHODS) * len(y))
+        self.assertEqual(len(coverage), len(METHODS))
         self.assertTrue(all(
             int(row["n_expected"]) == int(row["n_oof"]) == int(row["n_unique"]) == len(y)
             for row in coverage

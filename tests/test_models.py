@@ -35,7 +35,9 @@ class ModelsTest(unittest.TestCase):
                 self.assertIsNotNone(layer.biases.grad)
 
     def test_mlp_returns_trainable_threshold_logits(self) -> None:
-        model = MLPCoral(num_features=15, num_classes=3)
+        model = MLPCoral(num_features=15, num_classes=3, hidden_dim=64)
+        self.assertEqual(model.fc1.out_features, 64)
+        self.assertEqual(model.bn1d.num_features, 64)
         logits = model(torch.ones(4, 15))
 
         self.assertEqual(logits.shape, (4, 2))
