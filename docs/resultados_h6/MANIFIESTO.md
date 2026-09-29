@@ -1,7 +1,9 @@
-# Resultados definitivos H6
+# Resultados históricos H6
 
-La corrida seleccionada para los seis objetivos y los seis entrenamientos por
-objetivo es `results/h6_20260923_seed42`. La carpeta se nombró en el protocolo
+Esta fue la corrida seleccionada al cierre de H6 para los seis objetivos y los
+seis entrenamientos por objetivo. Se conserva como antecedente; los resultados
+usados en el informe están en [resultados finales](../resultados/MANIFIESTO.md).
+La carpeta `results/h6_20260923_seed42` se nombró en el protocolo
 H5 para el 23/09, pero la ejecución efectiva terminó el **22/09/2026 a las
 22:59:22 -03** en el servidor `enterprise`. `results/` contiene los artefactos
 completos y sigue ignorado por Git. Esta carpeta versiona las tablas y las
@@ -47,7 +49,7 @@ predicciones en total. Todas las probabilidades son finitas, están en [0, 1]
 y suman uno por muestra. Las 42 matrices OOF coinciden con sus predicciones;
 argmax y mediana tienen probabilidades idénticas y el mismo fold externo.
 
-Archivos finales:
+Archivos conservados de H6:
 
 - `resultados.csv` y `resultados.md`: nueve métricas como media ± desviación
   entre folds externos para cada método y objetivo.
