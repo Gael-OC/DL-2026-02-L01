@@ -1,6 +1,6 @@
 # Laboratorio 01 — Deep Learning: clasificación ordinal de GDS
 
-**Estudiantes:** Gael Ortega y Johan Piñones · **Estudiantes:** Grupo 09 · **Asignatura:** Deep Learning,
+**Estudiantes:** Gael Ortega y Johan Piñones · **Grupo:** Grupo 09 · **Asignatura:** Deep Learning,
 segundo semestre de 2026
 
 ## 1. Resumen y objetivos
